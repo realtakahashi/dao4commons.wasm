@@ -4,10 +4,10 @@
 // use ink_lang as ink;
 // #[ink::contract]
 
-pub use self::manager_contract::{ManagerContract, ManagerContractRef};
+pub use self::member_manager::{MemberManager, MemberManagerRef};
 
 #[openbrush::contract]
-pub mod manager_contract {
+pub mod member_manager {
     use ink_prelude::string::{String, ToString};
     use ink_prelude::vec::Vec;
     use ink_storage::traits::SpreadAllocate;
@@ -21,54 +21,20 @@ pub mod manager_contract {
     #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
     pub struct MemberInfo {
         name: String,
-        member_address: AccountId,
-        member_id: u16,
-        token_id: u16,
-        is_electoral_commissioner: bool,
-    }
-
-    #[derive(
-        Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout,
-    )]
-    #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
-    pub enum ProposalStatus {
-        /// initial value
-        None,
-        /// proposed
-        Proposed,
-        /// voting
-        Voting,
-        /// Finished voting
-        FinishedVoting,
-        /// running
-        Running,
-        /// denied
-        Denied,
-        /// finished
-        Finished,
-    }
-
-    #[derive(Debug, Clone, scale::Encode, scale::Decode, SpreadLayout, PackedLayout, PartialEq)]
-    #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
-    pub struct ProposalInfo {
-        proposal_id: u128,
-        proposer: AccountId,
-        title: String,
-        outline: String,
-        detail: String,
-        status: ProposalStatus,
+        memberAddress: AccountId,
+        memberId: u16,
+        tokenId: u16,
+        isElectoralCommissioner: bool,
     }
 
     #[ink(storage)]
     // #[derive(SpreadAllocate)]
     #[derive(SpreadAllocate, Storage, Default)]
-    pub struct ManagerContract {
+    pub struct MemberManager {
         #[storage_field]
         ownable: ownable::Data,
-
-        /// member function values.
-        next_member_id: u16,
         next_no: u16,
+        proposal_manager_address:AccountId,
         owner: AccountId,
         // ( DAO address , EOA Address ) => MemberInfo
         member_infoes: Mapping<(AccountId, AccountId), MemberInfo>,
@@ -76,16 +42,9 @@ pub mod manager_contract {
         member_infoes_from_id: Mapping<(AccountId, u16), MemberInfo>,
         // ( DAO address , commissioner_no ) = EOA Address
         electoral_commissioner: Mapping<(AccountId, u16), AccountId>,
-
-        /// proposal function values.
-
-        /// proposal_id
-        next_proposal_id: u128,
-        /// ( dao address, proposal_id) => proposal info
-        proposal_infoes: Mapping<(AccountId, u128), ProposalInfo>,
     }
 
-    impl Ownable for ManagerContract {}
+    impl Ownable for MemberManager {}
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
@@ -102,15 +61,13 @@ pub mod manager_contract {
         OnlyMemberDoes,
         /// Only Electoral Commissioner
         OnlyElectoralCommissioner,
-        /// The proposal does not exist.
-        ProposalDoesNotExist,
-        /// The status you are trying to change is invalid.
-        InvalidChanging,
+        /// Only Proposal Manager Address call this function.
+        OnlyFromProposalManagerAddress,
     }
 
     pub type Result<T> = core::result::Result<T, Error>;
 
-    impl ManagerContract {
+    impl MemberManager {
         /// Constructor
         #[ink(constructor)]
         pub fn new() -> Self {
@@ -120,7 +77,12 @@ pub mod manager_contract {
             })
         }
 
-        /// Functions of Member.
+        /// set proposal manager address
+        #[ink(message)]
+        #[modifiers(only_owner)]
+        pub fn set_propsal_manager_adress(&mut self, _proposal_manager_address:AccountId) {
+            self.proposal_manager_address = _proposal_manager_address;
+        }
 
         /// add first member.
         #[ink(message)]
@@ -131,8 +93,7 @@ pub mod manager_contract {
             _name: String,
             _token_id: u16,
         ) -> Result<()> {
-            let member_list = self.get_member_list(_dao_address);
-            if member_list.len() != 0 {
+            if  self.get_member_list(_dao_address).len() != 0 {
                 return Err(Error::NotFirstMember);
             }
             self.inline_add_member(_dao_address, _name, _member_address, _token_id, true);
@@ -144,12 +105,13 @@ pub mod manager_contract {
         pub fn add_member(
             &mut self,
             _dao_address: AccountId,
-            _proposal_id: u128,
             _member_address: AccountId,
             _name: String,
             _token_id: u16,
         ) -> Result<()> {
-            //todo:check proposal is valid
+            if self.modifier_only_call_from_proposal_manager() == false {
+                return Err(Error::OnlyFromProposalManagerAddress);
+            }
             if self.member_infoes.get(&(_dao_address, _member_address)) != None {
                 return Err(Error::MemberAlreadyExists);
             }
@@ -162,10 +124,11 @@ pub mod manager_contract {
         pub fn delete_member(
             &mut self,
             _dao_address: AccountId,
-            _proposal_id: u128,
             _member_address: AccountId,
         ) -> Result<()> {
-            // todo:check invalid proposal
+            if self.modifier_only_call_from_proposal_manager() == false {
+                return Err(Error::OnlyFromProposalManagerAddress);
+            }
             let member_info = match self.member_infoes.get(&(_dao_address, _member_address)) {
                 Some(value) => value,
                 None => return Err(Error::MemberDoesNotExist),
@@ -206,10 +169,10 @@ pub mod manager_contract {
             &mut self,
             _dao_address: AccountId,
             _member_address: AccountId,
-            _proposal_id: u128,
         ) -> Result<()> {
-            // todo: check only member
-            // todo: check invalid proposal
+            if self.modifier_only_call_from_proposal_manager() == false {
+                return Err(Error::OnlyFromProposalManagerAddress);
+            }
             let mut member_info: MemberInfo =
                 match self.member_infoes.get(&(_dao_address, _member_address)) {
                     Some(value) => value,
@@ -233,8 +196,10 @@ pub mod manager_contract {
         pub fn dismiss_electoral_commissioner(
             &mut self,
             _dao_address: AccountId,
-            _proposal_id: u128,
         ) -> Result<()> {
+            if self.modifier_only_call_from_proposal_manager() == false {
+                return Err(Error::OnlyFromProposalManagerAddress);
+            }
             for i in 0..self.next_no {
                 let member_address = match self.electoral_commissioner.get(&(_dao_address, i)) {
                     Some(value) => value,
@@ -258,42 +223,22 @@ pub mod manager_contract {
             Ok(())
         }
 
-        #[inline]
-        fn inline_add_member(
-            &mut self,
-            _dao_address: AccountId,
-            _name: String,
-            _member_address: AccountId,
-            _token_id: u16,
-            is_electoral_commissioner: bool,
-        ) {
-            let member_info = MemberInfo {
-                name: _name,
-                member_address: _member_address,
-                member_id: self.next_member_id,
-                token_id: _token_id,
-                is_electoral_commissioner: is_electoral_commissioner,
-            };
-
-            self.member_infoes
-                .insert(&(_dao_address, _member_address), &member_info.clone());
-            self.member_infoes_from_id
-                .insert(&(_dao_address, self.next_member_id), &member_info.clone());
-            self.next_member_id = self.next_member_id + 1;
-        }
-
-        #[inline]
-        fn modifier_only_member(&self, _dao_address: AccountId) -> bool {
-            let caller = self.env().caller();
+        /// modifier of only member 
+        #[ink(message)]
+        pub fn modifier_only_member(&self, caller: AccountId, _dao_address: AccountId) -> bool {
             match self.member_infoes.get(&(_dao_address, caller)) {
                 Some(_value) => true,
                 None => false,
             }
         }
 
-        #[inline]
-        fn modifier_only_electoral_commissioner(&self, _dao_address: AccountId) -> bool {
-            let caller = self.env().caller();
+        /// modifier of only electoral commissioner
+        #[ink(message)]
+        pub fn modifier_only_electoral_commissioner(
+            &self,
+            caller: AccountId,
+            _dao_address: AccountId,
+        ) -> bool {
             for i in 0..self.next_no {
                 match self.electoral_commissioner.get(&(_dao_address, i)) {
                     Some(value) => {
@@ -305,6 +250,42 @@ pub mod manager_contract {
                 };
             }
             false
+        }
+
+        #[inline]
+        fn inline_add_member(
+            &mut self,
+            _dao_address: AccountId,
+            _name: String,
+            _member_address: AccountId,
+            _token_id: u16,
+            _is_electoral_commissioner: bool,
+        ) {
+            let member_info = MemberInfo {
+                name: _name,
+                member_address: _member_address,
+                member_id: self.next_member_id,
+                token_id: _token_id,
+                is_electoral_commissioner: _is_electoral_commissioner,
+            };
+
+            self.member_infoes
+                .insert(&(_dao_address, _member_address), &member_info.clone());
+            self.member_infoes_from_id
+                .insert(&(_dao_address, self.next_member_id), &member_info.clone());
+            self.next_member_id = self.next_member_id + 1;
+
+            if _is_electoral_commissioner {
+                self.electoral_commissioner
+                    .insert(&(_dao_address, self.next_no), &_member_address);
+                self.next_no = self.next_no + 1;
+            }
+        }
+
+
+        #[inline]
+        fn modifier_only_call_from_proposal_manager(&self) -> bool {
+            self.env().caller() == self.proposal_manager_address
         }
     }
 
@@ -319,7 +300,6 @@ pub mod manager_contract {
         /// Imports `ink_lang` so we can use `#[ink::test]`.
         use ink_lang as ink;
 
-        /// We test a simple use case of our contract.
         #[ink::test]
         fn add_member_works() {
             let mut manager_contract = ManagerContract::new();
