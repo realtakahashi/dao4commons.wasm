@@ -4,10 +4,7 @@
 // use ink_lang as ink;
 // #[ink::contract]
 
-pub use self::proposal_manager::{
-    ProposalManager,
-    ProposalManagerRef,
-};
+pub use self::proposal_manager::{ProposalManager, ProposalManagerRef};
 
 #[openbrush::contract]
 pub mod proposal_manager {
@@ -16,8 +13,8 @@ pub mod proposal_manager {
     use ink_storage::traits::SpreadAllocate;
     use ink_storage::traits::StorageLayout;
     use ink_storage::traits::{PackedLayout, SpreadLayout};
-    use openbrush::{storage::Mapping, traits::Storage};
     use member_manager::MemberManagerRef;
+    use openbrush::{storage::Mapping, traits::Storage};
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
@@ -28,11 +25,30 @@ pub mod proposal_manager {
         MemberAlreadyExists,
         /// Electoral Commissioner Data is mismatched.
         ElectoralCommissionerDataMismatch,
+        /// The proposal does not exist.
+        ProposalDoesNotExist,
+        /// The status you are trying to change is invalid.
+        InvalidChanging,
+        /// Only Electoral Commissioner
+        OnlyElectoralCommissioner,
+        /// Only Member does.
+        OnlyMemberDoes,
+        /// Already Voted.
+        AlreadyVoted,
+        /// Incorrect Voting Status
+        IncorrectVotingStatus,
+        /// Voted Result does not exist.
+        VotedResultDoesNotExist,
+        /// Required voter turnout not achieved
+        VoterTurnoutNotAchieved,
+
     }
 
     pub type Result<T> = core::result::Result<T, Error>;
 
-    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
+    #[derive(
+        Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout,
+    )]
     #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
     pub enum ProposalStatus {
         /// initial value
@@ -51,12 +67,32 @@ pub mod proposal_manager {
         Finished,
     }
 
+    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+    pub enum YesOrNoWithTheProposal {
+        Yes,
+        No,
+    }
+
+    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+    pub enum ProposalType {
+        AddMember,
+        DeleteMember,
+        AddElectoralCommissioner,
+        DismissElectoralCommissioner,
+        SendDaoOwnedToken,
+        IssueToken,
+        SellToken,
+    }
+
+    pub const MAJORITY_PERCENTAGE_DEFINITION:u16 = 50;
+    pub const REQUIRED_VOTER_TURNOUT_PERCENTAGE_DEFINITION:u16 = 80;
+
     // #[derive(
     //     Default, Debug, Clone, scale::Encode, scale::Decode, SpreadLayout, PackedLayout, PartialEq,
     // )]
-    #[derive(
-        Debug, Clone, scale::Encode, scale::Decode, SpreadLayout, PackedLayout, PartialEq,
-    )]
+    #[derive(Debug, Clone, scale::Encode, scale::Decode, SpreadLayout, PackedLayout, PartialEq)]
     #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
     pub struct ProposalInfo {
         proposal_id: u128,
@@ -67,54 +103,66 @@ pub mod proposal_manager {
         status: ProposalStatus,
     }
 
-    #[derive(
-        Debug, Clone, scale::Encode, scale::Decode, SpreadLayout, PackedLayout, PartialEq,
-    )]
+    #[derive(Debug, Clone, scale::Encode, scale::Decode, SpreadLayout, PackedLayout, PartialEq)]
     #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
     pub struct VotingResult {
         proposal_id: u128,
-        for:u16,
-        against:u16,
+        yes: u16,
+        no: u16,
     }
 
     #[ink(storage)]
-    #[derive(SpreadAllocate, Storage, Default)]
+    //   #[derive(SpreadAllocate, Storage)]
+    //    #[derive(SpreadAllocate, Storage, Default)]
     pub struct ProposalManager {
         /// member_manager reference
         member_manager: MemberManagerRef,
         /// proposal_id
-        next_id: u128,
+        next_proposal_id: u128,
         /// ( dao address, proposal_id) => proposal info
         proposal_infoes: Mapping<(AccountId, u128), ProposalInfo>,
-        /// ( dao address, proposal_id) = voting result
+        /// ( dao address, proposal_id) => voting result
         voting_results: Mapping<(AccountId, u128), VotingResult>,
+        /// ( dao address, proposal_id) => eoa address
+        voted_people: Mapping<(AccountId, u128), Vec<AccountId>>,
     }
 
     impl ProposalManager {
         /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
-        pub fn new(_member_manager:MemberManagerRef) -> Self {
-            ink_lang::utils::initialize_contract(|self| {
-                self.member_manager_ref = _member_manager;
-            })
+        pub fn new(_member_manager: MemberManagerRef) -> Self {
+            // ink_lang::utils::initialize_contract(|instance: &mut Self| {
+            //     instance.member_manager = _member_manager;
+            // })
+            Self {
+                member_manager: _member_manager,
+                next_proposal_id: 0,
+                proposal_infoes: Mapping::default(),
+                voting_results: Mapping::default(),
+                voted_people: Mapping::default(),
+            }
         }
-
-        /// Functions of Proposal.
 
         /// add_proposal
         #[ink(message)]
         pub fn add_proposal(
             &mut self,
+            _proposal_type: ProposalType,
             _dao_address: AccountId,
             _title: String,
             _outline: String,
             _detail: String,
+            _json_data:String
         ) -> Result<()> {
             let caller = self.env().caller();
-            if member_manager.modifier_only_member(caller, _dao_address) == false {
+            if self
+                .member_manager
+                .modifier_only_member(caller, _dao_address)
+                == false
+            {
                 return Err(Error::OnlyMemberDoes);
             }
-            
+
             let proposal_info = ProposalInfo {
                 proposal_id: self.next_proposal_id,
                 title: _title,
@@ -143,6 +191,69 @@ pub mod proposal_manager {
             proposal_list
         }
 
+        /// vote for the proposal.
+        #[ink(message)]
+        pub fn vote_for_the_proposal(&mut self, _dao_address:AccountId, _proposal_id:u128, _yes_or_no: YesOrNoWithTheProposal) -> Result<()>{
+            let caller = self.env().caller();
+            if self
+                .member_manager
+                .modifier_only_member(caller, _dao_address)
+                == false
+            {
+                return Err(Error::OnlyMemberDoes);
+            }
+
+            let mut proposal_info: ProposalInfo =
+                match self.proposal_infoes.get(&(_dao_address, _proposal_id)) {
+                    Some(value) => value,
+                    None => return Err(Error::ProposalDoesNotExist),
+                };
+            if proposal_info.status != ProposalStatus::Voting {
+                return Err(Error::IncorrectVotingStatus);
+            }
+            let mut voted_list:Vec<AccountId> = match self.voted_people.get(&(_dao_address, _proposal_id)) {
+                Some(value) => {
+                    match value.contains(&caller){
+                        true => return Err(Error::AlreadyVoted),
+                        _ => value,
+                    }
+                },
+                None => Vec::<AccountId>::new(),
+            };
+            voted_list.push(caller);
+            self.voted_people.insert(&(_dao_address, _proposal_id), &voted_list);
+
+            let mut yes_value = 0;
+            let mut no_value = 0;
+            match _yes_or_no {
+                YesOrNoWithTheProposal::Yes => yes_value = yes_value + 1,
+                YesOrNoWithTheProposal::No => no_value = no_value + 1,
+            };
+
+            let mut vote_result:VotingResult = match self.voting_results.get(&(_dao_address, _proposal_id)){
+                Some(mut value) => {
+                    value.yes = value.yes + yes_value;
+                    value.no = value.no + no_value;
+                    value
+                },
+                None => {
+                    VotingResult {
+                        proposal_id: _proposal_id,
+                        yes: yes_value,
+                        no: no_value,
+                    }
+                }
+            };
+            self.voting_results.insert(&(_dao_address, _proposal_id), &vote_result);
+            Ok(())
+        }
+
+        /// get voting result
+        #[ink(message)]
+        pub fn get_voted_result(&self, _dao_address:AccountId, _proposal_id:u128) -> Option<VotingResult> {
+            self.voting_results.get(&(_dao_address,_proposal_id))
+        }
+
         /// change the proposal status
         #[ink(message)]
         pub fn change_proposal_status(
@@ -152,7 +263,11 @@ pub mod proposal_manager {
             _status: ProposalStatus,
         ) -> Result<()> {
             let caller = self.env().caller();
-            if member_manager.modifier_only_electoral_commissioner(caller, _dao_address) == false {
+            if self
+                .member_manager
+                .modifier_only_electoral_commissioner(caller, _dao_address)
+                == false
+            {
                 return Err(Error::OnlyElectoralCommissioner);
             }
             let mut proposal_info: ProposalInfo =
@@ -167,20 +282,39 @@ pub mod proposal_manager {
                 }
                 false => return Err(Error::InvalidChanging),
             }
-
+            if _status == ProposalStatus::FinishVoting {
+                self.count_votes_of_proposal(_dao_address, _proposal_id);
+            }
             Ok(())
         }
 
         #[inline]
-        fn check_and_execute_proposal(&mut self, _dao_address:AccountId, _proposal_id:u128) -> Result<()> {
-            let mut proposal_info:ProposalInfo = match self.proposal_infoes.get(&(_dao_address, _proposal_id)){
+        fn count_votes_of_proposal(
+            &mut self,
+            _dao_address: AccountId,
+            _proposal_id: u128
+        ) -> Result<()> {
+            let member_count:u16 = self.member_manager.get_member_list(_dao_address).len().try_into().unwrap();
+            let mut proposal_info :ProposalInfo= match self.proposal_infoes.get(&(_dao_address,_proposal_id)){
                 Some(value) => value,
                 None => return Err(Error::ProposalDoesNotExist),
+            };
+            let voted_result:VotingResult = match self.voting_results.get(&(_dao_address,_proposal_id)) {
+                Some(value) => value,
+                None => return Err(Error::VotedResultDoesNotExist),
+            };
+            let voter_count = voted_result.yes + voted_result.no;
+            if (voter_count / member_count * 100) < REQUIRED_VOTER_TURNOUT_PERCENTAGE_DEFINITION {
+                return Err(Error::VoterTurnoutNotAchieved);
             }
+            match (voted_result.yes / member_count * 100) >= MAJORITY_PERCENTAGE_DEFINITION {
+                true => proposal_info.status = ProposalStatus::Running,
+                false =>  proposal_info.status = ProposalStatus::Denied,
+            }
+            self.inline_change_proposal_status(_dao_address, proposal_info);
 
             Ok(())
         }
-
 
         /// change status for local function.
         #[inline]
@@ -206,7 +340,7 @@ pub mod proposal_manager {
                     _ => return false,
                 },
                 ProposalStatus::Voting => match _status {
-                    ProposalStatus::FinishedVoting => return true,
+                    ProposalStatus::FinishVoting => return true,
                     _ => return false,
                 },
                 _ => return false,
@@ -220,270 +354,290 @@ pub mod proposal_manager {
 /// The below code is technically just normal Rust code.
 #[cfg(test)]
 mod tests {
+    use core::borrow::Borrow;
+
     /// Imports all the definitions from the outer scope so we can use them here.
     use super::*;
 
     /// Imports `ink_lang` so we can use `#[ink::test]`.
     use ink_lang as ink;
 
-    #[ink::test]
-    fn add_proposal_works() {
-        let mut manager_contract = ManagerContract::new();
-        let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
-        // no member add a proposal.
-        match manager_contract.add_proposal(
-            accounts.frank,
-            "test_title".to_string(),
-            "test_ outline".to_string(),
-            "test_detail".to_string(),
-        ) {
-            Ok(()) => panic!("This is not expected path."),
-            Err(error) => assert_eq!(error, Error::OnlyMemberDoes),
-        }
-
-        ink_env::test::set_caller::<ink_env::DefaultEnvironment>(accounts.alice);
-        let _res = manager_contract.add_member(
-            accounts.frank,
-            0,
-            accounts.alice,
-            "alice".to_string(),
-            0,
-        );
-        // add one proposal
-        match manager_contract.add_proposal(
-            accounts.frank,
-            "test_title".to_string(),
-            "test_outline".to_string(),
-            "test_detail".to_string(),
-        ) {
-            Ok(()) => {
-                let proposal_list: Vec<ProposalInfo> =
-                    manager_contract.get_proposal_list(accounts.frank);
-                assert_eq!(0, proposal_list[0].proposal_id);
-                assert_eq!("test_title".to_string(), proposal_list[0].title);
-                assert_eq!("test_outline".to_string(), proposal_list[0].outline);
-                assert_eq!("test_detail".to_string(), proposal_list[0].detail);
-                assert_eq!(ProposalStatus::Proposed, proposal_list[0].status);
-                assert_eq!(accounts.alice, proposal_list[0].proposer);
-            }
-            Err(_error) => panic!("This is not expected path."),
-        }
-        // add two proposal
-        match manager_contract.add_proposal(
-            accounts.frank,
-            "test_title2".to_string(),
-            "test_outline2".to_string(),
-            "test_detail2".to_string(),
-        ) {
-            Ok(()) => {
-                let proposal_list: Vec<ProposalInfo> =
-                    manager_contract.get_proposal_list(accounts.frank);
-                assert_eq!(1, proposal_list[1].proposal_id);
-                assert_eq!("test_title2".to_string(), proposal_list[1].title);
-                assert_eq!("test_outline2".to_string(), proposal_list[1].outline);
-                assert_eq!("test_detail2".to_string(), proposal_list[1].detail);
-                assert_eq!(ProposalStatus::Proposed, proposal_list[1].status);
-                assert_eq!(accounts.alice, proposal_list[1].proposer);
-            }
-            Err(_error) => panic!("This is not expected path."),
-        }
-    }
+    use member_manager::{MemberManager, MemberManagerRef};
 
     #[ink::test]
-    fn change_proposal_status_works() {
-        let mut manager_contract = ManagerContract::new();
+    fn instanciate_works() {
+        let mut member_manager = MemberManager::new();
+        //        let member_manager_ref:MemberManagerRef = &mut member_manager;
+        let mut proposal_manager = ProposalManager::new(&member_manager);
         let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
-        ink_env::test::set_caller::<ink_env::DefaultEnvironment>(accounts.alice);
-        let _res = manager_contract.add_member(
+        let res = member_manager.add_first_member(
             accounts.frank,
-            0,
             accounts.alice,
-            "alice".to_string(),
+            "takahashi".to_string(),
             0,
         );
-        // add one proposal
-        match manager_contract.add_proposal(
-            accounts.frank,
-            "test_title".to_string(),
-            "test_outline".to_string(),
-            "test_detail".to_string(),
-        ) {
-            Ok(()) => {
-                let proposal_list: Vec<ProposalInfo> =
-                    manager_contract.get_proposal_list(accounts.frank);
-                assert_eq!(0, proposal_list[0].proposal_id);
-            }
-            Err(_error) => panic!("This is not expected path."),
-        }
-        // add two proposal
-        match manager_contract.add_proposal(
-            accounts.frank,
-            "test_title2".to_string(),
-            "test_outline2".to_string(),
-            "test_detail2".to_string(),
-        ) {
-            Ok(()) => {
-                let proposal_list: Vec<ProposalInfo> =
-                    manager_contract.get_proposal_list(accounts.frank);
-                assert_eq!(1, proposal_list[1].proposal_id);
-            }
-            Err(_error) => panic!("This is not expected path."),
-        }
-
-        // change status
-        // Proposed -> Something
-        // Proposed -> Denied
-        match manager_contract.change_proposal_status(accounts.frank, 0, ProposalStatus::Denied)
-        {
-            Ok(()) => panic!("This is not expected path."),
-            Err(error) => assert_eq!(Error::InvalidChanging, error),
-        }
-        // Proposed -> None
-        match manager_contract.change_proposal_status(accounts.frank, 0, ProposalStatus::None) {
-            Ok(()) => panic!("This is not expected path."),
-            Err(error) => assert_eq!(Error::InvalidChanging, error),
-        }
-        // Proposed -> Proposed
-        match manager_contract.change_proposal_status(
-            accounts.frank,
-            0,
-            ProposalStatus::Proposed,
-        ) {
-            Ok(()) => panic!("This is not expected path."),
-            Err(error) => assert_eq!(Error::InvalidChanging, error),
-        }
-        // Proposed -> Denied
-        match manager_contract.change_proposal_status(accounts.frank, 0, ProposalStatus::Denied)
-        {
-            Ok(()) => panic!("This is not expected path."),
-            Err(error) => assert_eq!(Error::InvalidChanging, error),
-        }
-        // Proposed -> Running
-        match manager_contract.change_proposal_status(
-            accounts.frank,
-            0,
-            ProposalStatus::Running,
-        ) {
-            Ok(()) => panic!("This is not expected path."),
-            Err(error) => assert_eq!(Error::InvalidChanging, error),
-        }
-        // Proposed -> Finished
-        match manager_contract.change_proposal_status(
-            accounts.frank,
-            0,
-            ProposalStatus::Finished,
-        ) {
-            Ok(()) => panic!("This is not expected path."),
-            Err(error) => assert_eq!(Error::InvalidChanging, error),
-        }
-        // Proposed -> FinishVoting
-        match manager_contract.change_proposal_status(
-            accounts.frank,
-            0,
-            ProposalStatus::FinishedVoting,
-        ) {
-            Ok(()) => panic!("This is not expected path."),
-            Err(error) => assert_eq!(Error::InvalidChanging, error),
-        }
-        // Proposed -> Voting
-        let res =
-            manager_contract.change_proposal_status(accounts.frank, 0, ProposalStatus::Voting);
         assert_eq!(Ok(()), res);
-        // check value
-        let proposal_list: Vec<ProposalInfo> =
-            manager_contract.get_proposal_list(accounts.frank);
-        assert_eq!(ProposalStatus::Voting, proposal_list[0].status);
-
-        // Voting -> Something
-        // Voting -> None
-        match manager_contract.change_proposal_status(accounts.frank, 0, ProposalStatus::None) {
-            Ok(()) => panic!("This is not expected path."),
-            Err(error) => assert_eq!(Error::InvalidChanging, error),
-        }
-        // Voting -> Proposed
-        match manager_contract.change_proposal_status(
-            accounts.frank,
-            0,
-            ProposalStatus::Proposed,
-        ) {
-            Ok(()) => panic!("This is not expected path."),
-            Err(error) => assert_eq!(Error::InvalidChanging, error),
-        }
-        // Voting -> Denied
-        match manager_contract.change_proposal_status(accounts.frank, 0, ProposalStatus::Denied)
-        {
-            Ok(()) => panic!("This is not expected path."),
-            Err(error) => assert_eq!(Error::InvalidChanging, error),
-        }
-        // Voting -> Running
-        match manager_contract.change_proposal_status(
-            accounts.frank,
-            0,
-            ProposalStatus::Running,
-        ) {
-            Ok(()) => panic!("This is not expected path."),
-            Err(error) => assert_eq!(Error::InvalidChanging, error),
-        }
-        // Voting -> Finished
-        match manager_contract.change_proposal_status(
-            accounts.frank,
-            0,
-            ProposalStatus::Finished,
-        ) {
-            Ok(()) => panic!("This is not expected path."),
-            Err(error) => assert_eq!(Error::InvalidChanging, error),
-        }
-        // Voting -> FinishVoting
-        let res = manager_contract.change_proposal_status(
-            accounts.frank,
-            0,
-            ProposalStatus::FinishedVoting,
-        );
-        assert_eq!(Ok(()), res);
-        // check value
-        let proposal_list: Vec<ProposalInfo> =
-            manager_contract.get_proposal_list(accounts.frank);
-        assert_eq!(ProposalStatus::FinishedVoting, proposal_list[0].status);
-
-        // FinishVoting -> Something
-        // FinishVoting -> None
-        match manager_contract.change_proposal_status(accounts.frank, 0, ProposalStatus::None) {
-            Ok(()) => panic!("This is not expected path."),
-            Err(error) => assert_eq!(Error::InvalidChanging, error),
-        }
-        // FinishVoting -> Proposed
-        match manager_contract.change_proposal_status(
-            accounts.frank,
-            0,
-            ProposalStatus::Proposed,
-        ) {
-            Ok(()) => panic!("This is not expected path."),
-            Err(error) => assert_eq!(Error::InvalidChanging, error),
-        }
-        // FinishVoting -> Denied
-        match manager_contract.change_proposal_status(accounts.frank, 0, ProposalStatus::Denied)
-        {
-            Ok(()) => panic!("This is not expected path."),
-            Err(error) => assert_eq!(Error::InvalidChanging, error),
-        }
-        // FinishVoting -> Running
-        match manager_contract.change_proposal_status(
-            accounts.frank,
-            0,
-            ProposalStatus::Running,
-        ) {
-            Ok(()) => panic!("This is not expected path."),
-            Err(error) => assert_eq!(Error::InvalidChanging, error),
-        }
-        // FinishVoting -> Finished
-        match manager_contract.change_proposal_status(
-            accounts.frank,
-            0,
-            ProposalStatus::Finished,
-        ) {
-            Ok(()) => panic!("This is not expected path."),
-            Err(error) => assert_eq!(Error::InvalidChanging, error),
-        }
+        // proposal_manager.add_proposal(accounts.frank, "test_title".to_string(), "test_ outline".to_string(), "test_detail".to_string(),);
+        // assert_eq!(Ok(()), res);
     }
 
+    // #[ink::test]
+    // fn add_proposal_works() {
+    //     let mut manager_contract = ManagerContract::new();
+    //     let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+    //     // no member add a proposal.
+    //     match manager_contract.add_proposal(
+    //         accounts.frank,
+    //         "test_title".to_string(),
+    //         "test_ outline".to_string(),
+    //         "test_detail".to_string(),
+    //     ) {
+    //         Ok(()) => panic!("This is not expected path."),
+    //         Err(error) => assert_eq!(error, Error::OnlyMemberDoes),
+    //     }
+
+    //     ink_env::test::set_caller::<ink_env::DefaultEnvironment>(accounts.alice);
+    //     let _res = manager_contract.add_member(
+    //         accounts.frank,
+    //         0,
+    //         accounts.alice,
+    //         "alice".to_string(),
+    //         0,
+    //     );
+    //     // add one proposal
+    //     match manager_contract.add_proposal(
+    //         accounts.frank,
+    //         "test_title".to_string(),
+    //         "test_outline".to_string(),
+    //         "test_detail".to_string(),
+    //     ) {
+    //         Ok(()) => {
+    //             let proposal_list: Vec<ProposalInfo> =
+    //                 manager_contract.get_proposal_list(accounts.frank);
+    //             assert_eq!(0, proposal_list[0].proposal_id);
+    //             assert_eq!("test_title".to_string(), proposal_list[0].title);
+    //             assert_eq!("test_outline".to_string(), proposal_list[0].outline);
+    //             assert_eq!("test_detail".to_string(), proposal_list[0].detail);
+    //             assert_eq!(ProposalStatus::Proposed, proposal_list[0].status);
+    //             assert_eq!(accounts.alice, proposal_list[0].proposer);
+    //         }
+    //         Err(_error) => panic!("This is not expected path."),
+    //     }
+    //     // add two proposal
+    //     match manager_contract.add_proposal(
+    //         accounts.frank,
+    //         "test_title2".to_string(),
+    //         "test_outline2".to_string(),
+    //         "test_detail2".to_string(),
+    //     ) {
+    //         Ok(()) => {
+    //             let proposal_list: Vec<ProposalInfo> =
+    //                 manager_contract.get_proposal_list(accounts.frank);
+    //             assert_eq!(1, proposal_list[1].proposal_id);
+    //             assert_eq!("test_title2".to_string(), proposal_list[1].title);
+    //             assert_eq!("test_outline2".to_string(), proposal_list[1].outline);
+    //             assert_eq!("test_detail2".to_string(), proposal_list[1].detail);
+    //             assert_eq!(ProposalStatus::Proposed, proposal_list[1].status);
+    //             assert_eq!(accounts.alice, proposal_list[1].proposer);
+    //         }
+    //         Err(_error) => panic!("This is not expected path."),
+    //     }
+    // }
+
+    // #[ink::test]
+    // fn change_proposal_status_works() {
+    //     let mut manager_contract = ManagerContract::new();
+    //     let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+    //     ink_env::test::set_caller::<ink_env::DefaultEnvironment>(accounts.alice);
+    //     let _res = manager_contract.add_member(
+    //         accounts.frank,
+    //         0,
+    //         accounts.alice,
+    //         "alice".to_string(),
+    //         0,
+    //     );
+    //     // add one proposal
+    //     match manager_contract.add_proposal(
+    //         accounts.frank,
+    //         "test_title".to_string(),
+    //         "test_outline".to_string(),
+    //         "test_detail".to_string(),
+    //     ) {
+    //         Ok(()) => {
+    //             let proposal_list: Vec<ProposalInfo> =
+    //                 manager_contract.get_proposal_list(accounts.frank);
+    //             assert_eq!(0, proposal_list[0].proposal_id);
+    //         }
+    //         Err(_error) => panic!("This is not expected path."),
+    //     }
+    //     // add two proposal
+    //     match manager_contract.add_proposal(
+    //         accounts.frank,
+    //         "test_title2".to_string(),
+    //         "test_outline2".to_string(),
+    //         "test_detail2".to_string(),
+    //     ) {
+    //         Ok(()) => {
+    //             let proposal_list: Vec<ProposalInfo> =
+    //                 manager_contract.get_proposal_list(accounts.frank);
+    //             assert_eq!(1, proposal_list[1].proposal_id);
+    //         }
+    //         Err(_error) => panic!("This is not expected path."),
+    //     }
+
+    //     // change status
+    //     // Proposed -> Something
+    //     // Proposed -> Denied
+    //     match manager_contract.change_proposal_status(accounts.frank, 0, ProposalStatus::Denied)
+    //     {
+    //         Ok(()) => panic!("This is not expected path."),
+    //         Err(error) => assert_eq!(Error::InvalidChanging, error),
+    //     }
+    //     // Proposed -> None
+    //     match manager_contract.change_proposal_status(accounts.frank, 0, ProposalStatus::None) {
+    //         Ok(()) => panic!("This is not expected path."),
+    //         Err(error) => assert_eq!(Error::InvalidChanging, error),
+    //     }
+    //     // Proposed -> Proposed
+    //     match manager_contract.change_proposal_status(
+    //         accounts.frank,
+    //         0,
+    //         ProposalStatus::Proposed,
+    //     ) {
+    //         Ok(()) => panic!("This is not expected path."),
+    //         Err(error) => assert_eq!(Error::InvalidChanging, error),
+    //     }
+    //     // Proposed -> Denied
+    //     match manager_contract.change_proposal_status(accounts.frank, 0, ProposalStatus::Denied)
+    //     {
+    //         Ok(()) => panic!("This is not expected path."),
+    //         Err(error) => assert_eq!(Error::InvalidChanging, error),
+    //     }
+    //     // Proposed -> Running
+    //     match manager_contract.change_proposal_status(
+    //         accounts.frank,
+    //         0,
+    //         ProposalStatus::Running,
+    //     ) {
+    //         Ok(()) => panic!("This is not expected path."),
+    //         Err(error) => assert_eq!(Error::InvalidChanging, error),
+    //     }
+    //     // Proposed -> Finished
+    //     match manager_contract.change_proposal_status(
+    //         accounts.frank,
+    //         0,
+    //         ProposalStatus::Finished,
+    //     ) {
+    //         Ok(()) => panic!("This is not expected path."),
+    //         Err(error) => assert_eq!(Error::InvalidChanging, error),
+    //     }
+    //     // Proposed -> FinishVoting
+    //     match manager_contract.change_proposal_status(
+    //         accounts.frank,
+    //         0,
+    //         ProposalStatus::FinishedVoting,
+    //     ) {
+    //         Ok(()) => panic!("This is not expected path."),
+    //         Err(error) => assert_eq!(Error::InvalidChanging, error),
+    //     }
+    //     // Proposed -> Voting
+    //     let res =
+    //         manager_contract.change_proposal_status(accounts.frank, 0, ProposalStatus::Voting);
+    //     assert_eq!(Ok(()), res);
+    //     // check value
+    //     let proposal_list: Vec<ProposalInfo> =
+    //         manager_contract.get_proposal_list(accounts.frank);
+    //     assert_eq!(ProposalStatus::Voting, proposal_list[0].status);
+
+    //     // Voting -> Something
+    //     // Voting -> None
+    //     match manager_contract.change_proposal_status(accounts.frank, 0, ProposalStatus::None) {
+    //         Ok(()) => panic!("This is not expected path."),
+    //         Err(error) => assert_eq!(Error::InvalidChanging, error),
+    //     }
+    //     // Voting -> Proposed
+    //     match manager_contract.change_proposal_status(
+    //         accounts.frank,
+    //         0,
+    //         ProposalStatus::Proposed,
+    //     ) {
+    //         Ok(()) => panic!("This is not expected path."),
+    //         Err(error) => assert_eq!(Error::InvalidChanging, error),
+    //     }
+    //     // Voting -> Denied
+    //     match manager_contract.change_proposal_status(accounts.frank, 0, ProposalStatus::Denied)
+    //     {
+    //         Ok(()) => panic!("This is not expected path."),
+    //         Err(error) => assert_eq!(Error::InvalidChanging, error),
+    //     }
+    //     // Voting -> Running
+    //     match manager_contract.change_proposal_status(
+    //         accounts.frank,
+    //         0,
+    //         ProposalStatus::Running,
+    //     ) {
+    //         Ok(()) => panic!("This is not expected path."),
+    //         Err(error) => assert_eq!(Error::InvalidChanging, error),
+    //     }
+    //     // Voting -> Finished
+    //     match manager_contract.change_proposal_status(
+    //         accounts.frank,
+    //         0,
+    //         ProposalStatus::Finished,
+    //     ) {
+    //         Ok(()) => panic!("This is not expected path."),
+    //         Err(error) => assert_eq!(Error::InvalidChanging, error),
+    //     }
+    //     // Voting -> FinishVoting
+    //     let res = manager_contract.change_proposal_status(
+    //         accounts.frank,
+    //         0,
+    //         ProposalStatus::FinishedVoting,
+    //     );
+    //     assert_eq!(Ok(()), res);
+    //     // check value
+    //     let proposal_list: Vec<ProposalInfo> =
+    //         manager_contract.get_proposal_list(accounts.frank);
+    //     assert_eq!(ProposalStatus::FinishedVoting, proposal_list[0].status);
+
+    //     // FinishVoting -> Something
+    //     // FinishVoting -> None
+    //     match manager_contract.change_proposal_status(accounts.frank, 0, ProposalStatus::None) {
+    //         Ok(()) => panic!("This is not expected path."),
+    //         Err(error) => assert_eq!(Error::InvalidChanging, error),
+    //     }
+    //     // FinishVoting -> Proposed
+    //     match manager_contract.change_proposal_status(
+    //         accounts.frank,
+    //         0,
+    //         ProposalStatus::Proposed,
+    //     ) {
+    //         Ok(()) => panic!("This is not expected path."),
+    //         Err(error) => assert_eq!(Error::InvalidChanging, error),
+    //     }
+    //     // FinishVoting -> Denied
+    //     match manager_contract.change_proposal_status(accounts.frank, 0, ProposalStatus::Denied)
+    //     {
+    //         Ok(()) => panic!("This is not expected path."),
+    //         Err(error) => assert_eq!(Error::InvalidChanging, error),
+    //     }
+    //     // FinishVoting -> Running
+    //     match manager_contract.change_proposal_status(
+    //         accounts.frank,
+    //         0,
+    //         ProposalStatus::Running,
+    //     ) {
+    //         Ok(()) => panic!("This is not expected path."),
+    //         Err(error) => assert_eq!(Error::InvalidChanging, error),
+    //     }
+    //     // FinishVoting -> Finished
+    //     match manager_contract.change_proposal_status(
+    //         accounts.frank,
+    //         0,
+    //         ProposalStatus::Finished,
+    //     ) {
+    //         Ok(()) => panic!("This is not expected path."),
+    //         Err(error) => assert_eq!(Error::InvalidChanging, error),
+    //     }
+    // }
 }

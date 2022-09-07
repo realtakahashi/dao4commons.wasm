@@ -8,11 +8,12 @@ pub use self::member_manager::{MemberManager, MemberManagerRef};
 
 #[openbrush::contract]
 pub mod member_manager {
-    use ink_prelude::string::{String, ToString};
+    use ink_prelude::string::{String};
     use ink_prelude::vec::Vec;
     use ink_storage::traits::SpreadAllocate;
     use ink_storage::traits::StorageLayout;
     use ink_storage::traits::{PackedLayout, SpreadLayout};
+    use openbrush::contracts::ownable::OwnableError;
     use openbrush::{contracts::ownable::*, modifiers, storage::Mapping, traits::Storage};
 
     #[derive(
@@ -21,10 +22,10 @@ pub mod member_manager {
     #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
     pub struct MemberInfo {
         name: String,
-        memberAddress: AccountId,
-        memberId: u16,
-        tokenId: u16,
-        isElectoralCommissioner: bool,
+        member_address: AccountId,
+        member_id: u16,
+        token_id: u16,
+        is_electoral_commissioner: bool,
     }
 
     #[ink(storage)]
@@ -34,6 +35,7 @@ pub mod member_manager {
         #[storage_field]
         ownable: ownable::Data,
         next_no: u16,
+        next_member_id: u16,
         proposal_manager_address:AccountId,
         owner: AccountId,
         // ( DAO address , EOA Address ) => MemberInfo
@@ -66,6 +68,7 @@ pub mod member_manager {
     }
 
     pub type Result<T> = core::result::Result<T, Error>;
+    pub type ResultOwner<T> = core::result::Result<T, OwnableError>;
 
     impl MemberManager {
         /// Constructor
@@ -80,8 +83,9 @@ pub mod member_manager {
         /// set proposal manager address
         #[ink(message)]
         #[modifiers(only_owner)]
-        pub fn set_propsal_manager_adress(&mut self, _proposal_manager_address:AccountId) {
+        pub fn set_propsal_manager_adress(&mut self, _proposal_manager_address:AccountId) -> ResultOwner<()> {
             self.proposal_manager_address = _proposal_manager_address;
+            Ok(())
         }
 
         /// add first member.
