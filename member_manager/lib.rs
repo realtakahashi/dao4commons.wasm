@@ -8,17 +8,19 @@ pub use self::member_manager::{MemberManager, MemberManagerRef};
 
 #[openbrush::contract]
 pub mod member_manager {
-    use ink_prelude::string::{String};
+    use ink_env::debug_println;
+    use ink_prelude::string::{String,ToString};
+    use ink_prelude::vec;
     use ink_prelude::vec::Vec;
     use ink_storage::traits::SpreadAllocate;
     use ink_storage::traits::StorageLayout;
     use ink_storage::traits::{PackedLayout, SpreadLayout};
     use openbrush::contracts::ownable::OwnableError;
     use openbrush::{contracts::ownable::*, modifiers, storage::Mapping, traits::Storage};
+    use rustc_hex::FromHex;
 
     #[derive(
-        Default, Debug, Clone, scale::Encode, scale::Decode, SpreadLayout, PackedLayout, PartialEq,
-    )]
+        Default, Debug, Clone, scale::Encode, scale::Decode, SpreadLayout, PackedLayout, PartialEq)]
     #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
     pub struct MemberInfo {
         name: String,
@@ -65,9 +67,11 @@ pub mod member_manager {
         OnlyElectoralCommissioner,
         /// Only Proposal Manager Address call this function.
         OnlyFromProposalManagerAddress,
+        /// Csv Convert Failure
+        CsvConvertFailure,
     }
 
-    pub type Result<T> = core::result::Result<T, Error>;
+    pub type ResultTransaction<T> = core::result::Result<T, Error>;
     pub type ResultOwner<T> = core::result::Result<T, OwnableError>;
 
     impl MemberManager {
@@ -96,7 +100,7 @@ pub mod member_manager {
             _member_address: AccountId,
             _name: String,
             _token_id: u16,
-        ) -> Result<()> {
+        ) -> ResultTransaction<()> {
             if  self.get_member_list(_dao_address).len() != 0 {
                 return Err(Error::NotFirstMember);
             }
@@ -104,22 +108,23 @@ pub mod member_manager {
             Ok(())
         }
 
-        /// add a member.
+        /// add a member
         #[ink(message)]
-        pub fn add_member(
-            &mut self,
-            _dao_address: AccountId,
-            _member_address: AccountId,
-            _name: String,
-            _token_id: u16,
-        ) -> Result<()> {
+        pub fn add_member(&mut self, _dao_address:AccountId, _csv_data:String) -> ResultTransaction<()> {
             if self.modifier_only_call_from_proposal_manager() == false {
                 return Err(Error::OnlyFromProposalManagerAddress);
             }
-            if self.member_infoes.get(&(_dao_address, _member_address)) != None {
+
+            // ink_env::debug_println!("########## pass add_member #first position");
+
+            let member_info = match self.inline_convert_csv_2_memberinfo(_csv_data) {
+                Some(value) => value,
+                None => return Err(Error::CsvConvertFailure),
+            };
+            if self.member_infoes.get(&(_dao_address, member_info.member_address)) != None {
                 return Err(Error::MemberAlreadyExists);
             }
-            self.inline_add_member(_dao_address, _name, _member_address, _token_id, false);
+            self.inline_add_member(_dao_address, member_info.name, member_info.member_address, member_info.token_id, false);
             Ok(())
         }
 
@@ -129,7 +134,7 @@ pub mod member_manager {
             &mut self,
             _dao_address: AccountId,
             _member_address: AccountId,
-        ) -> Result<()> {
+        ) -> ResultTransaction<()> {
             if self.modifier_only_call_from_proposal_manager() == false {
                 return Err(Error::OnlyFromProposalManagerAddress);
             }
@@ -173,7 +178,7 @@ pub mod member_manager {
             &mut self,
             _dao_address: AccountId,
             _member_address: AccountId,
-        ) -> Result<()> {
+        ) -> ResultTransaction<()> {
             if self.modifier_only_call_from_proposal_manager() == false {
                 return Err(Error::OnlyFromProposalManagerAddress);
             }
@@ -200,7 +205,7 @@ pub mod member_manager {
         pub fn dismiss_electoral_commissioner(
             &mut self,
             _dao_address: AccountId,
-        ) -> Result<()> {
+        ) -> ResultTransaction<()> {
             if self.modifier_only_call_from_proposal_manager() == false {
                 return Err(Error::OnlyFromProposalManagerAddress);
             }
@@ -254,6 +259,34 @@ pub mod member_manager {
                 };
             }
             false
+        }
+
+        #[inline]
+        fn convert_string_to_accountid(&self, account_str: &str)-> AccountId{
+            let mut output = vec![0xFF; 35];
+            bs58::decode(account_str).into(&mut output).unwrap();
+            let cut_address_vec:Vec<_> = output.drain(1..33).collect();
+            let mut array = [0; 32];
+            let bytes = &cut_address_vec[..array.len()]; 
+            array.copy_from_slice(bytes);
+            let accountId:AccountId = array.into();
+            accountId
+        }
+
+        #[inline]
+        fn inline_convert_csv_2_memberinfo(&self, _csv_data:String)->Option<MemberInfo>{
+            let _array:Vec<&str> = _csv_data.split(',').collect();
+            if _array.len() != 5 {
+                return None;
+            };
+
+            Some(MemberInfo{
+                name: _array[0].to_string(),
+                member_address: self.convert_string_to_accountid(_array[1]),
+                member_id: _array[2].parse::<u16>().unwrap(),
+                token_id: _array[3].parse::<u16>().unwrap(),
+                is_electoral_commissioner:false,
+            })
         }
 
         #[inline]

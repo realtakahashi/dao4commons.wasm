@@ -74,8 +74,10 @@ pub mod proposal_manager {
         No,
     }
 
-    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
-    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+    #[derive(
+        Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout,
+    )]
+    #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
     pub enum ProposalType {
         AddMember,
         DeleteMember,
@@ -95,12 +97,14 @@ pub mod proposal_manager {
     #[derive(Debug, Clone, scale::Encode, scale::Decode, SpreadLayout, PackedLayout, PartialEq)]
     #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
     pub struct ProposalInfo {
+        proposal_type: ProposalType,
         proposal_id: u128,
         proposer: AccountId,
         title: String,
         outline: String,
         detail: String,
         status: ProposalStatus,
+        json_data: String,
     }
 
     #[derive(Debug, Clone, scale::Encode, scale::Decode, SpreadLayout, PackedLayout, PartialEq)]
@@ -164,12 +168,14 @@ pub mod proposal_manager {
             }
 
             let proposal_info = ProposalInfo {
+                proposal_type: _proposal_type,
                 proposal_id: self.next_proposal_id,
                 title: _title,
                 outline: _outline,
                 detail: _detail,
                 status: self::ProposalStatus::Proposed,
                 proposer: caller,
+                json_data: _json_data,
             };
             self.proposal_infoes
                 .insert(&(_dao_address, self.next_proposal_id), &proposal_info);
