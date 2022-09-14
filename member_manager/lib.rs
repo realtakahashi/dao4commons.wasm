@@ -9,7 +9,7 @@ pub use self::member_manager::{MemberManager, MemberManagerRef};
 #[openbrush::contract]
 pub mod member_manager {
     use ink_env::debug_println;
-    use ink_prelude::string::{String,ToString};
+    use ink_prelude::string::{String, ToString};
     use ink_prelude::vec;
     use ink_prelude::vec::Vec;
     use ink_storage::traits::SpreadAllocate;
@@ -20,7 +20,8 @@ pub mod member_manager {
     use rustc_hex::FromHex;
 
     #[derive(
-        Default, Debug, Clone, scale::Encode, scale::Decode, SpreadLayout, PackedLayout, PartialEq)]
+        Default, Debug, Clone, scale::Encode, scale::Decode, SpreadLayout, PackedLayout, PartialEq,
+    )]
     #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
     pub struct MemberInfo {
         name: String,
@@ -36,9 +37,9 @@ pub mod member_manager {
     pub struct MemberManager {
         #[storage_field]
         ownable: ownable::Data,
-        next_no: u16,
+        next_commissioner_no: u16,
         next_member_id: u16,
-        proposal_manager_address:AccountId,
+        proposal_manager_address: AccountId,
         owner: AccountId,
         // ( DAO address , EOA Address ) => MemberInfo
         member_infoes: Mapping<(AccountId, AccountId), MemberInfo>,
@@ -69,6 +70,8 @@ pub mod member_manager {
         OnlyFromProposalManagerAddress,
         /// Csv Convert Failure
         CsvConvertFailure,
+        /// Invalid Electoral Commissioner Count
+        InvalidElectoralCommissionerCount,
     }
 
     pub type ResultTransaction<T> = core::result::Result<T, Error>;
@@ -87,7 +90,10 @@ pub mod member_manager {
         /// set proposal manager address
         #[ink(message)]
         #[modifiers(only_owner)]
-        pub fn set_propsal_manager_adress(&mut self, _proposal_manager_address:AccountId) -> ResultOwner<()> {
+        pub fn set_propsal_manager_adress(
+            &mut self,
+            _proposal_manager_address: AccountId,
+        ) -> ResultOwner<()> {
             self.proposal_manager_address = _proposal_manager_address;
             Ok(())
         }
@@ -101,7 +107,7 @@ pub mod member_manager {
             _name: String,
             _token_id: u16,
         ) -> ResultTransaction<()> {
-            if  self.get_member_list(_dao_address).len() != 0 {
+            if self.get_member_list(_dao_address).len() != 0 {
                 return Err(Error::NotFirstMember);
             }
             self.inline_add_member(_dao_address, _name, _member_address, _token_id, true);
@@ -110,7 +116,11 @@ pub mod member_manager {
 
         /// add a member
         #[ink(message)]
-        pub fn add_member(&mut self, _dao_address:AccountId, _csv_data:String) -> ResultTransaction<()> {
+        pub fn add_member(
+            &mut self,
+            _dao_address: AccountId,
+            _csv_data: String,
+        ) -> ResultTransaction<()> {
             if self.modifier_only_call_from_proposal_manager() == false {
                 return Err(Error::OnlyFromProposalManagerAddress);
             }
@@ -121,10 +131,20 @@ pub mod member_manager {
                 Some(value) => value,
                 None => return Err(Error::CsvConvertFailure),
             };
-            if self.member_infoes.get(&(_dao_address, member_info.member_address)) != None {
+            if self
+                .member_infoes
+                .get(&(_dao_address, member_info.member_address))
+                != None
+            {
                 return Err(Error::MemberAlreadyExists);
             }
-            self.inline_add_member(_dao_address, member_info.name, member_info.member_address, member_info.token_id, false);
+            self.inline_add_member(
+                _dao_address,
+                member_info.name,
+                member_info.member_address,
+                member_info.token_id,
+                false,
+            );
             Ok(())
         }
 
@@ -142,7 +162,7 @@ pub mod member_manager {
                 Some(value) => value,
                 None => return Err(Error::MemberDoesNotExist),
             };
-            for i in 0..self.next_no {
+            for i in 0..self.next_commissioner_no {
                 let electoral_commissioner_address: AccountId =
                     match self.electoral_commissioner.get(&(_dao_address, i)) {
                         Some(value) => value,
@@ -156,6 +176,25 @@ pub mod member_manager {
                 .remove(&(_dao_address, member_info.member_id));
             self.member_infoes.remove(&(_dao_address, _member_address));
             Ok(())
+        }
+
+        /// change electoral commissioner
+        #[ink(message)]
+        pub fn change_electoral_commissioner(
+            &mut self,
+            _dao_address: AccountId,
+            _csv_data: String,
+        ) -> ResultTransaction<()> {
+            let _array: Vec<&str> = _csv_data.split(',').collect();
+            if _array.len() > self.get_member_list(_dao_address).len() {
+                return Err(Error::InvalidElectoralCommissionerCount);
+            };
+            let mut account_vec: Vec<AccountId> = Vec::new();
+            for account in _array {
+                account_vec.push(self.convert_string_to_accountid(account));
+            }
+
+            self.inline_change_electoral_commissioner(_dao_address, account_vec)
         }
 
         /// get member list.
@@ -172,44 +211,80 @@ pub mod member_manager {
             member_list
         }
 
-        /// add electoral commissioner.
+        /// modifier of only member
         #[ink(message)]
-        pub fn add_electoral_commissioner(
+        pub fn modifier_only_member(&self, caller: AccountId, _dao_address: AccountId) -> bool {
+            match self.member_infoes.get(&(_dao_address, caller)) {
+                Some(_value) => true,
+                None => false,
+            }
+        }
+
+        /// modifier of only electoral commissioner
+        #[ink(message)]
+        pub fn modifier_only_electoral_commissioner(
+            &self,
+            caller: AccountId,
+            _dao_address: AccountId,
+        ) -> bool {
+            for i in 0..self.next_commissioner_no {
+                match self.electoral_commissioner.get(&(_dao_address, i)) {
+                    Some(value) => {
+                        if value == caller {
+                            return true;
+                        }
+                    }
+                    None => return false,
+                };
+            }
+            false
+        }
+
+        /// change electoral commissioner
+        #[inline]
+        fn inline_change_electoral_commissioner(
             &mut self,
             _dao_address: AccountId,
-            _member_address: AccountId,
+            _candidates: Vec<AccountId>,
         ) -> ResultTransaction<()> {
             if self.modifier_only_call_from_proposal_manager() == false {
                 return Err(Error::OnlyFromProposalManagerAddress);
             }
-            let mut member_info: MemberInfo =
-                match self.member_infoes.get(&(_dao_address, _member_address)) {
+            for account in _candidates.clone() {
+                match self.member_infoes.get(&(_dao_address, account)) {
+                    Some(value) => continue,
+                    None => return Err(Error::MemberDoesNotExist),
+                };
+            }
+            match self.dismiss_electoral_commissioner(_dao_address) {
+                Ok(()) => (),
+                Err(e) => return Err(e),
+            }
+            for account in _candidates.clone() {
+                let mut member_info = match self.member_infoes.get(&(_dao_address, account)) {
                     Some(value) => value,
                     None => return Err(Error::MemberDoesNotExist),
                 };
-            self.electoral_commissioner
-                .insert(&(_dao_address, self.next_no), &_member_address);
-            self.next_no = self.next_no + 1;
+                self.electoral_commissioner
+                    .insert(&(_dao_address, self.next_commissioner_no), &account);
+                self.next_commissioner_no = self.next_commissioner_no + 1;
 
-            member_info.is_electoral_commissioner = true;
-            self.member_infoes
-                .insert(&(_dao_address, _member_address), &member_info.clone());
-            self.member_infoes_from_id
-                .insert(&(_dao_address, member_info.member_id), &member_info.clone());
-
+                member_info.is_electoral_commissioner = true;
+                self.member_infoes
+                    .insert(&(_dao_address, account), &member_info.clone());
+                self.member_infoes_from_id
+                    .insert(&(_dao_address, member_info.member_id), &member_info.clone());
+            }
             Ok(())
         }
 
         /// dismiss electoral commissioner.
-        #[ink(message)]
-        pub fn dismiss_electoral_commissioner(
+        #[inline]
+        fn dismiss_electoral_commissioner(
             &mut self,
             _dao_address: AccountId,
         ) -> ResultTransaction<()> {
-            if self.modifier_only_call_from_proposal_manager() == false {
-                return Err(Error::OnlyFromProposalManagerAddress);
-            }
-            for i in 0..self.next_no {
+            for i in 0..self.next_commissioner_no {
                 let member_address = match self.electoral_commissioner.get(&(_dao_address, i)) {
                     Some(value) => value,
                     None => return Err(Error::ElectoralCommissionerDataMismatch),
@@ -229,63 +304,35 @@ pub mod member_manager {
 
                 self.electoral_commissioner.remove(&(_dao_address, i));
             }
+            self.next_commissioner_no = 0;
             Ok(())
         }
 
-        /// modifier of only member 
-        #[ink(message)]
-        pub fn modifier_only_member(&self, caller: AccountId, _dao_address: AccountId) -> bool {
-            match self.member_infoes.get(&(_dao_address, caller)) {
-                Some(_value) => true,
-                None => false,
-            }
-        }
-
-        /// modifier of only electoral commissioner
-        #[ink(message)]
-        pub fn modifier_only_electoral_commissioner(
-            &self,
-            caller: AccountId,
-            _dao_address: AccountId,
-        ) -> bool {
-            for i in 0..self.next_no {
-                match self.electoral_commissioner.get(&(_dao_address, i)) {
-                    Some(value) => {
-                        if value == caller {
-                            return true;
-                        }
-                    }
-                    None => return false,
-                };
-            }
-            false
-        }
-
         #[inline]
-        fn convert_string_to_accountid(&self, account_str: &str)-> AccountId{
+        fn convert_string_to_accountid(&self, account_str: &str) -> AccountId {
             let mut output = vec![0xFF; 35];
             bs58::decode(account_str).into(&mut output).unwrap();
-            let cut_address_vec:Vec<_> = output.drain(1..33).collect();
+            let cut_address_vec: Vec<_> = output.drain(1..33).collect();
             let mut array = [0; 32];
-            let bytes = &cut_address_vec[..array.len()]; 
+            let bytes = &cut_address_vec[..array.len()];
             array.copy_from_slice(bytes);
-            let accountId:AccountId = array.into();
+            let accountId: AccountId = array.into();
             accountId
         }
 
         #[inline]
-        fn inline_convert_csv_2_memberinfo(&self, _csv_data:String)->Option<MemberInfo>{
-            let _array:Vec<&str> = _csv_data.split(',').collect();
+        fn inline_convert_csv_2_memberinfo(&self, _csv_data: String) -> Option<MemberInfo> {
+            let _array: Vec<&str> = _csv_data.split(',').collect();
             if _array.len() != 5 {
                 return None;
             };
 
-            Some(MemberInfo{
+            Some(MemberInfo {
                 name: _array[0].to_string(),
                 member_address: self.convert_string_to_accountid(_array[1]),
                 member_id: _array[2].parse::<u16>().unwrap(),
                 token_id: _array[3].parse::<u16>().unwrap(),
-                is_electoral_commissioner:false,
+                is_electoral_commissioner: false,
             })
         }
 
@@ -314,11 +361,10 @@ pub mod member_manager {
 
             if _is_electoral_commissioner {
                 self.electoral_commissioner
-                    .insert(&(_dao_address, self.next_no), &_member_address);
-                self.next_no = self.next_no + 1;
+                    .insert(&(_dao_address, self.next_commissioner_no), &_member_address);
+                self.next_commissioner_no = self.next_commissioner_no + 1;
             }
         }
-
 
         #[inline]
         fn modifier_only_call_from_proposal_manager(&self) -> bool {

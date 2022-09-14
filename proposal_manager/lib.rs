@@ -41,7 +41,16 @@ pub mod proposal_manager {
         VotedResultDoesNotExist,
         /// Required voter turnout not achieved
         VoterTurnoutNotAchieved,
-
+        /// Not Running
+        NotRunning,
+        /// Not Implemented
+        NotImplemented,
+        /// Expiration of term of election commissioner
+        ExpirationOfTermOfElectionCommissioner,
+        /// Not Expiration Of Term Of Election Commissioner
+        NotExpirationOfTermOfElectionCommissioner,
+        /// Invalid Member Manager Call
+        InvalidMemberManagerCall,
     }
 
     pub type Result<T> = core::result::Result<T, Error>;
@@ -81,15 +90,15 @@ pub mod proposal_manager {
     pub enum ProposalType {
         AddMember,
         DeleteMember,
-        AddElectoralCommissioner,
-        DismissElectoralCommissioner,
+        ChangeElectoralCommissioner,
         SendDaoOwnedToken,
         IssueToken,
         SellToken,
     }
 
-    pub const MAJORITY_PERCENTAGE_DEFINITION:u16 = 50;
-    pub const REQUIRED_VOTER_TURNOUT_PERCENTAGE_DEFINITION:u16 = 80;
+    pub const MAJORITY_PERCENTAGE_DEFINITION: u16 = 50;
+    pub const REQUIRED_VOTER_TURNOUT_PERCENTAGE_DEFINITION: u16 = 80;
+    pub const TENURE_OF_LIMIT: u16 = 3;
 
     // #[derive(
     //     Default, Debug, Clone, scale::Encode, scale::Decode, SpreadLayout, PackedLayout, PartialEq,
@@ -104,7 +113,7 @@ pub mod proposal_manager {
         outline: String,
         detail: String,
         status: ProposalStatus,
-        json_data: String,
+        csv_data: String,
     }
 
     #[derive(Debug, Clone, scale::Encode, scale::Decode, SpreadLayout, PackedLayout, PartialEq)]
@@ -123,6 +132,8 @@ pub mod proposal_manager {
         member_manager: MemberManagerRef,
         /// proposal_id
         next_proposal_id: u128,
+        /// dao_address => count of tenure
+        count_of_tenure: Mapping<AccountId, u16>,
         /// ( dao address, proposal_id) => proposal info
         proposal_infoes: Mapping<(AccountId, u128), ProposalInfo>,
         /// ( dao address, proposal_id) => voting result
@@ -141,6 +152,7 @@ pub mod proposal_manager {
             Self {
                 member_manager: _member_manager,
                 next_proposal_id: 0,
+                count_of_tenure: Mapping::default(),
                 proposal_infoes: Mapping::default(),
                 voting_results: Mapping::default(),
                 voted_people: Mapping::default(),
@@ -156,7 +168,7 @@ pub mod proposal_manager {
             _title: String,
             _outline: String,
             _detail: String,
-            _json_data:String
+            _csv_data: String,
         ) -> Result<()> {
             let caller = self.env().caller();
             if self
@@ -167,6 +179,18 @@ pub mod proposal_manager {
                 return Err(Error::OnlyMemberDoes);
             }
 
+            let limit = self.is_limit_tenure_count_of_electoral_commissioner(_dao_address);
+            match _proposal_type {
+                ProposalType::ChangeElectoralCommissioner => match limit {
+                    true => (),
+                    false => return Err(Error::NotExpirationOfTermOfElectionCommissioner),
+                },
+                _ => match limit {
+                    true => return Err(Error::ExpirationOfTermOfElectionCommissioner),
+                    false => (),
+                },
+            };
+
             let proposal_info = ProposalInfo {
                 proposal_type: _proposal_type,
                 proposal_id: self.next_proposal_id,
@@ -175,7 +199,7 @@ pub mod proposal_manager {
                 detail: _detail,
                 status: self::ProposalStatus::Proposed,
                 proposer: caller,
-                json_data: _json_data,
+                csv_data: _csv_data,
             };
             self.proposal_infoes
                 .insert(&(_dao_address, self.next_proposal_id), &proposal_info);
@@ -199,7 +223,12 @@ pub mod proposal_manager {
 
         /// vote for the proposal.
         #[ink(message)]
-        pub fn vote_for_the_proposal(&mut self, _dao_address:AccountId, _proposal_id:u128, _yes_or_no: YesOrNoWithTheProposal) -> Result<()>{
+        pub fn vote_for_the_proposal(
+            &mut self,
+            _dao_address: AccountId,
+            _proposal_id: u128,
+            _yes_or_no: YesOrNoWithTheProposal,
+        ) -> Result<()> {
             let caller = self.env().caller();
             if self
                 .member_manager
@@ -217,17 +246,18 @@ pub mod proposal_manager {
             if proposal_info.status != ProposalStatus::Voting {
                 return Err(Error::IncorrectVotingStatus);
             }
-            let mut voted_list:Vec<AccountId> = match self.voted_people.get(&(_dao_address, _proposal_id)) {
-                Some(value) => {
-                    match value.contains(&caller){
+
+            let mut voted_list: Vec<AccountId> =
+                match self.voted_people.get(&(_dao_address, _proposal_id)) {
+                    Some(value) => match value.contains(&caller) {
                         true => return Err(Error::AlreadyVoted),
                         _ => value,
-                    }
-                },
-                None => Vec::<AccountId>::new(),
-            };
+                    },
+                    None => Vec::<AccountId>::new(),
+                };
             voted_list.push(caller);
-            self.voted_people.insert(&(_dao_address, _proposal_id), &voted_list);
+            self.voted_people
+                .insert(&(_dao_address, _proposal_id), &voted_list);
 
             let mut yes_value = 0;
             let mut no_value = 0;
@@ -236,28 +266,32 @@ pub mod proposal_manager {
                 YesOrNoWithTheProposal::No => no_value = no_value + 1,
             };
 
-            let mut vote_result:VotingResult = match self.voting_results.get(&(_dao_address, _proposal_id)){
-                Some(mut value) => {
-                    value.yes = value.yes + yes_value;
-                    value.no = value.no + no_value;
-                    value
-                },
-                None => {
-                    VotingResult {
+            let vote_result: VotingResult =
+                match self.voting_results.get(&(_dao_address, _proposal_id)) {
+                    Some(mut value) => {
+                        value.yes = value.yes + yes_value;
+                        value.no = value.no + no_value;
+                        value
+                    }
+                    None => VotingResult {
                         proposal_id: _proposal_id,
                         yes: yes_value,
                         no: no_value,
-                    }
-                }
-            };
-            self.voting_results.insert(&(_dao_address, _proposal_id), &vote_result);
+                    },
+                };
+            self.voting_results
+                .insert(&(_dao_address, _proposal_id), &vote_result);
             Ok(())
         }
 
         /// get voting result
         #[ink(message)]
-        pub fn get_voted_result(&self, _dao_address:AccountId, _proposal_id:u128) -> Option<VotingResult> {
-            self.voting_results.get(&(_dao_address,_proposal_id))
+        pub fn get_voted_result(
+            &self,
+            _dao_address: AccountId,
+            _proposal_id: u128,
+        ) -> Option<VotingResult> {
+            self.voting_results.get(&(_dao_address, _proposal_id))
         }
 
         /// change the proposal status
@@ -276,11 +310,25 @@ pub mod proposal_manager {
             {
                 return Err(Error::OnlyElectoralCommissioner);
             }
+
             let mut proposal_info: ProposalInfo =
                 match self.proposal_infoes.get(&(_dao_address, _proposal_id)) {
                     Some(value) => value,
                     None => return Err(Error::ProposalDoesNotExist),
                 };
+
+            let limit = self.is_limit_tenure_count_of_electoral_commissioner(_dao_address);
+            match proposal_info.proposal_type {
+                ProposalType::ChangeElectoralCommissioner => match limit {
+                    true => (),
+                    false => return Err(Error::NotExpirationOfTermOfElectionCommissioner),
+                },
+                _ => match limit {
+                    true => return Err(Error::ExpirationOfTermOfElectionCommissioner),
+                    false => (),
+                },
+            };
+
             match self.check_anti_pattern(proposal_info.clone(), _status.clone()) {
                 true => {
                     proposal_info.status = _status.clone();
@@ -294,28 +342,121 @@ pub mod proposal_manager {
             Ok(())
         }
 
+        /// execute the proposal
+        #[ink(message)]
+        pub fn execute_proposal(
+            &mut self,
+            _dao_address: AccountId,
+            _proposal_id: u128,
+        ) -> Result<()> {
+            let caller = self.env().caller();
+            if self
+                .member_manager
+                .modifier_only_member(caller, _dao_address)
+                == false
+            {
+                return Err(Error::OnlyMemberDoes);
+            }
+
+            let mut proposal_info: ProposalInfo =
+                match self.proposal_infoes.get(&(_dao_address, _proposal_id)) {
+                    Some(value) => {
+                        if value.status != ProposalStatus::Running {
+                            return Err(Error::NotRunning);
+                        }
+                        value
+                    }
+                    None => return Err(Error::ProposalDoesNotExist),
+                };
+
+            match proposal_info.proposal_type {
+                ProposalType::AddMember => {
+                    match self.member_manager.add_member(_dao_address, proposal_info.clone().csv_data) {
+                        Ok(()) => (),
+                        Err(e) => return Err(Error::InvalidMemberManagerCall),
+                    }
+                },
+                ProposalType::ChangeElectoralCommissioner => {
+                    match self.member_manager.change_electoral_commissioner(_dao_address,proposal_info.clone().csv_data,){
+                        Ok(()) => (),
+                        Err(e) => return Err(Error::InvalidMemberManagerCall),
+                    };
+                    self.clear_tenure_count(_dao_address);
+                },
+                _ => return Err(Error::NotImplemented),
+            };
+            proposal_info.status = ProposalStatus::Finished;
+            self.inline_change_proposal_status(_dao_address, proposal_info.clone());
+            Ok(())
+        }
+
+        /// add tenure count
+        #[inline]
+        fn add_tenure_count(&mut self, _dao_address: AccountId) {
+            match self.count_of_tenure.get(&_dao_address) {
+                Some(value) => {
+                    let count = value + 1;
+                    self.count_of_tenure.insert(&_dao_address, &count);
+                }
+                None => (),
+            }
+        }
+
+        /// clear tenure count
+        fn clear_tenure_count(&mut self, _dao_address: AccountId){
+            match self.count_of_tenure.get(&_dao_address) {
+                Some(value) => {
+                    let count = 0;
+                    self.count_of_tenure.insert(&_dao_address, &count);
+                }
+                None => (),
+            }
+        }
+
+        /// check tenure count
+        #[inline]
+        fn is_limit_tenure_count_of_electoral_commissioner(&self, _dao_address: AccountId) -> bool {
+            match self.count_of_tenure.get(&_dao_address) {
+                Some(value) => return value >= TENURE_OF_LIMIT,
+                None => return false,
+            };
+        }
+
+        /// count voting result.
         #[inline]
         fn count_votes_of_proposal(
             &mut self,
             _dao_address: AccountId,
-            _proposal_id: u128
+            _proposal_id: u128,
         ) -> Result<()> {
-            let member_count:u16 = self.member_manager.get_member_list(_dao_address).len().try_into().unwrap();
-            let mut proposal_info :ProposalInfo= match self.proposal_infoes.get(&(_dao_address,_proposal_id)){
-                Some(value) => value,
-                None => return Err(Error::ProposalDoesNotExist),
-            };
-            let voted_result:VotingResult = match self.voting_results.get(&(_dao_address,_proposal_id)) {
-                Some(value) => value,
-                None => return Err(Error::VotedResultDoesNotExist),
-            };
+            let member_count: u16 = self
+                .member_manager
+                .get_member_list(_dao_address)
+                .len()
+                .try_into()
+                .unwrap();
+            let mut proposal_info: ProposalInfo =
+                match self.proposal_infoes.get(&(_dao_address, _proposal_id)) {
+                    Some(value) => value,
+                    None => return Err(Error::ProposalDoesNotExist),
+                };
+            let voted_result: VotingResult =
+                match self.voting_results.get(&(_dao_address, _proposal_id)) {
+                    Some(value) => value,
+                    None => return Err(Error::VotedResultDoesNotExist),
+                };
+
+            self.add_tenure_count(_dao_address);
+
             let voter_count = voted_result.yes + voted_result.no;
             if (voter_count / member_count * 100) < REQUIRED_VOTER_TURNOUT_PERCENTAGE_DEFINITION {
-                return Err(Error::VoterTurnoutNotAchieved);
+                proposal_info.status = ProposalStatus::Denied;
+                self.inline_change_proposal_status(_dao_address, proposal_info);
+                return Ok(());
             }
             match (voted_result.yes / member_count * 100) >= MAJORITY_PERCENTAGE_DEFINITION {
                 true => proposal_info.status = ProposalStatus::Running,
-                false =>  proposal_info.status = ProposalStatus::Denied,
+                false => proposal_info.status = ProposalStatus::Denied,
             }
             self.inline_change_proposal_status(_dao_address, proposal_info);
 
