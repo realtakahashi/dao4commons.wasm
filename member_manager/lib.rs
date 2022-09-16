@@ -72,6 +72,10 @@ pub mod member_manager {
         CsvConvertFailure,
         /// Invalid Electoral Commissioner Count
         InvalidElectoralCommissionerCount,
+        /// Invalid Delete Member Count
+        InvalidDeleteMemberCount,
+        /// At least one election commissioner
+        AtLeastOneElectionCommissioner,
     }
 
     pub type ResultTransaction<T> = core::result::Result<T, Error>;
@@ -148,25 +152,46 @@ pub mod member_manager {
             Ok(())
         }
 
-        /// delete the member.
+        /// delete the member
         #[ink(message)]
-        pub fn delete_member(
+        pub fn delete_member(&mut self, _dao_address: AccountId, _csv_data: String) -> ResultTransaction<()> {
+            if self.modifier_only_call_from_proposal_manager() == false {
+                ink_env::debug_println!("########################### OnlyFromProposalManagerAddress Error.");
+                return Err(Error::OnlyFromProposalManagerAddress);
+            }
+            let _array: Vec<&str> = _csv_data.split(',').collect();
+            if _array.len() > 1 {
+                ink_env::debug_println!("InvalidDeleteMemberCount Error.");
+                return Err(Error::InvalidDeleteMemberCount);
+            }
+            self.inline_delete_member(_dao_address, self.convert_string_to_accountid(_array[0]))
+        }
+
+        /// inline delete the member.
+        #[inline]
+        fn inline_delete_member(
             &mut self,
             _dao_address: AccountId,
             _member_address: AccountId,
         ) -> ResultTransaction<()> {
-            if self.modifier_only_call_from_proposal_manager() == false {
-                return Err(Error::OnlyFromProposalManagerAddress);
-            }
             let member_info = match self.member_infoes.get(&(_dao_address, _member_address)) {
                 Some(value) => value,
-                None => return Err(Error::MemberDoesNotExist),
+                None => {
+                    ink_env::debug_println!("MemberDoesNotExist Error.");
+                    return Err(Error::MemberDoesNotExist);
+                },
             };
+
+            if self.get_electoral_commissioner_list(_dao_address).len() == 1 {
+                ink_env::debug_println!("MemberDoesNotExist Error.");
+                return Err(Error::AtLeastOneElectionCommissioner);
+            }
+
             for i in 0..self.next_commissioner_no {
                 let electoral_commissioner_address: AccountId =
                     match self.electoral_commissioner.get(&(_dao_address, i)) {
                         Some(value) => value,
-                        None => return Err(Error::ElectoralCommissionerDataMismatch),
+                        None => continue,
                     };
                 if electoral_commissioner_address == member_info.member_address {
                     self.electoral_commissioner.remove(&(_dao_address, i));
@@ -185,8 +210,14 @@ pub mod member_manager {
             _dao_address: AccountId,
             _csv_data: String,
         ) -> ResultTransaction<()> {
+            if self.modifier_only_call_from_proposal_manager() == false {
+                ink_env::debug_println!("########################### OnlyFromProposalManagerAddress Error.");
+                return Err(Error::OnlyFromProposalManagerAddress);
+            }
+
             let _array: Vec<&str> = _csv_data.split(',').collect();
             if _array.len() > self.get_member_list(_dao_address).len() {
+                ink_env::debug_println!("########################### InvalidElectoralCommissionerCount Error. array:{:?}  member:{:?}",_array.len(),self.get_member_list(_dao_address).len());
                 return Err(Error::InvalidElectoralCommissionerCount);
             };
             let mut account_vec: Vec<AccountId> = Vec::new();
@@ -209,6 +240,22 @@ pub mod member_manager {
                 member_list.push(member_info.clone());
             }
             member_list
+        }
+
+        /// get electoral commissioner list
+        #[ink(message)]
+        pub fn get_electoral_commissioner_list(&self, _dao_address: AccountId) -> Vec<MemberInfo> {
+            let mut result:Vec<MemberInfo> = Vec::new(); 
+            for i in 0..self.next_commissioner_no {
+                match self.electoral_commissioner.get(&(_dao_address, i)) {
+                    Some(value) => match self.member_infoes.get(&(_dao_address, value)) {
+                        Some(value) => result.push(value),
+                        None => continue,
+                    },
+                    None => continue,
+                };
+            }
+            return result;
         }
 
         /// modifier of only member
@@ -247,23 +294,29 @@ pub mod member_manager {
             _dao_address: AccountId,
             _candidates: Vec<AccountId>,
         ) -> ResultTransaction<()> {
-            if self.modifier_only_call_from_proposal_manager() == false {
-                return Err(Error::OnlyFromProposalManagerAddress);
-            }
             for account in _candidates.clone() {
                 match self.member_infoes.get(&(_dao_address, account)) {
                     Some(value) => continue,
-                    None => return Err(Error::MemberDoesNotExist),
+                    None => {
+                        ink_env::debug_println!("########################### MemberDoesNotExist 1 Error.");        
+                        return Err(Error::MemberDoesNotExist)
+                    },
                 };
             }
             match self.dismiss_electoral_commissioner(_dao_address) {
                 Ok(()) => (),
-                Err(e) => return Err(e),
+                Err(e) => {
+                    ink_env::debug_println!("########################### dismiss_electoral_commissioner Error.");        
+                    return Err(e)
+                },
             }
             for account in _candidates.clone() {
                 let mut member_info = match self.member_infoes.get(&(_dao_address, account)) {
                     Some(value) => value,
-                    None => return Err(Error::MemberDoesNotExist),
+                    None => {
+                        ink_env::debug_println!("########################### MemberDoesNotExist 2 Error.");      
+                        return Err(Error::MemberDoesNotExist)
+                    },
                 };
                 self.electoral_commissioner
                     .insert(&(_dao_address, self.next_commissioner_no), &account);

@@ -91,14 +91,14 @@ pub mod proposal_manager {
         AddMember,
         DeleteMember,
         ChangeElectoralCommissioner,
-        SendDaoOwnedToken,
+        UseDaoTresury,
         IssueToken,
         SellToken,
     }
 
     pub const MAJORITY_PERCENTAGE_DEFINITION: u16 = 50;
     pub const REQUIRED_VOTER_TURNOUT_PERCENTAGE_DEFINITION: u16 = 80;
-    pub const TENURE_OF_LIMIT: u16 = 3;
+    pub const TENURE_OF_LIMIT: u16 = 1;
 
     // #[derive(
     //     Default, Debug, Clone, scale::Encode, scale::Decode, SpreadLayout, PackedLayout, PartialEq,
@@ -176,6 +176,7 @@ pub mod proposal_manager {
                 .modifier_only_member(caller, _dao_address)
                 == false
             {
+                ink_env::debug_println!("################### not member error.");
                 return Err(Error::OnlyMemberDoes);
             }
 
@@ -337,7 +338,10 @@ pub mod proposal_manager {
                 false => return Err(Error::InvalidChanging),
             }
             if _status == ProposalStatus::FinishVoting {
-                self.count_votes_of_proposal(_dao_address, _proposal_id);
+                match self.count_votes_of_proposal(_dao_address, _proposal_id) {
+                    Ok(()) => (),
+                    Err(e) => return Err(e),
+                };
             }
             Ok(())
         }
@@ -373,7 +377,10 @@ pub mod proposal_manager {
                 ProposalType::AddMember => {
                     match self.member_manager.add_member(_dao_address, proposal_info.clone().csv_data) {
                         Ok(()) => (),
-                        Err(e) => return Err(Error::InvalidMemberManagerCall),
+                        Err(e) => {
+                            ink_env::debug_println!("########################### Execute Error.");
+                            return Err(Error::InvalidMemberManagerCall)
+                        },
                     }
                 },
                 ProposalType::ChangeElectoralCommissioner => {
@@ -398,7 +405,10 @@ pub mod proposal_manager {
                     let count = value + 1;
                     self.count_of_tenure.insert(&_dao_address, &count);
                 }
-                None => (),
+                None => {
+                    let count = 1;
+                    self.count_of_tenure.insert(&_dao_address, &count);
+                },
             }
         }
 
@@ -417,7 +427,11 @@ pub mod proposal_manager {
         #[inline]
         fn is_limit_tenure_count_of_electoral_commissioner(&self, _dao_address: AccountId) -> bool {
             match self.count_of_tenure.get(&_dao_address) {
-                Some(value) => return value >= TENURE_OF_LIMIT,
+                Some(value) => {
+                    ink_env::debug_println!("########################### count_of_tenure : {:?}", value);
+                    ink_env::debug_println!("########################### TENURE_OF_LIMIT : {:?}", TENURE_OF_LIMIT);
+                    return value >= TENURE_OF_LIMIT;
+                },
                 None => return false,
             };
         }
@@ -443,7 +457,11 @@ pub mod proposal_manager {
             let voted_result: VotingResult =
                 match self.voting_results.get(&(_dao_address, _proposal_id)) {
                     Some(value) => value,
-                    None => return Err(Error::VotedResultDoesNotExist),
+                    None => VotingResult {
+                        proposal_id: _proposal_id,
+                        yes: 0,
+                        no: 0,
+                    },
                 };
 
             self.add_tenure_count(_dao_address);
