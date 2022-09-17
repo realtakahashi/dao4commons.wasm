@@ -98,7 +98,7 @@ pub mod proposal_manager {
 
     pub const MAJORITY_PERCENTAGE_DEFINITION: u16 = 50;
     pub const REQUIRED_VOTER_TURNOUT_PERCENTAGE_DEFINITION: u16 = 80;
-    pub const TENURE_OF_LIMIT: u16 = 1;
+    pub const TENURE_OF_LIMIT: u16 = 3;
 
     // #[derive(
     //     Default, Debug, Clone, scale::Encode, scale::Decode, SpreadLayout, PackedLayout, PartialEq,
