@@ -74,7 +74,7 @@ mod dao_psp34 {
                 None => return "".to_string(),
             };
 
-            String::from_utf8(base_uri.clone()).unwrap() + &self._get_id_string(id)
+            String::from_utf8(base_uri.clone()).unwrap() + &self._get_id_string(id) + ".json"
         }
 
         #[ink(message)]
@@ -142,7 +142,7 @@ mod dao_psp34 {
                 Id::U8(0),
                 "takahashi".to_string(),
                 "TKH".to_string(),
-                "https://takahashi.com".to_string(),
+                "https://takahashi.com/".to_string(),
                 2000000000000000000,
                 _convert_string_to_accountid("ZAP5o2BjWAo5uoKDE6b6Xkk4Ju7k6bDu24LNjgZbfM3iyiR"),
                 _convert_string_to_accountid("XjMCB8QBUPHqh8VhAUGBETFxo9EY4rzu8ppeR1jpCPMyJjR"),
@@ -152,6 +152,132 @@ mod dao_psp34 {
                 None => "".as_bytes().to_vec(),
             };
             assert_eq!(name, "takahashi".as_bytes().to_vec());
+
+            let symbol = match dao_psp34.get_attribute(Id::U8(0), "symbol".as_bytes().to_vec()) {
+                Some(value) => value,
+                None => "".as_bytes().to_vec(),
+            };
+            assert_eq!(symbol, "TKH".as_bytes().to_vec());
+
+            let base_uri = match dao_psp34.get_attribute(Id::U8(0), "base_uri".as_bytes().to_vec())
+            {
+                Some(value) => value,
+                None => "".as_bytes().to_vec(),
+            };
+            assert_eq!(base_uri, "https://takahashi.com/".as_bytes().to_vec());
+
+            assert_eq!(dao_psp34.initial_id, Id::U8(0));
+            assert_eq!(dao_psp34.sales_price, 2000000000000000000);
+            assert_eq!(
+                dao_psp34.dao_address,
+                _convert_string_to_accountid("ZAP5o2BjWAo5uoKDE6b6Xkk4Ju7k6bDu24LNjgZbfM3iyiR")
+            );
+            assert_eq!(
+                dao_psp34.proposal_manager_address,
+                _convert_string_to_accountid("XjMCB8QBUPHqh8VhAUGBETFxo9EY4rzu8ppeR1jpCPMyJjR")
+            );
+        }
+
+        #[ink::test]
+        fn sales_for_mint_works() {
+            let mut dao_psp34 = DaoPsp34::new(
+                Id::U8(0),
+                "takahashi".to_string(),
+                "TKH".to_string(),
+                "https://takahashi.com/".to_string(),
+                2000000000000000000,
+                _convert_string_to_accountid("ZAP5o2BjWAo5uoKDE6b6Xkk4Ju7k6bDu24LNjgZbfM3iyiR"),
+                _convert_string_to_accountid("XjMCB8QBUPHqh8VhAUGBETFxo9EY4rzu8ppeR1jpCPMyJjR"),
+            );
+            ink_env::test::set_value_transferred::<ink_env::DefaultEnvironment>(
+                2000000000000000000,
+            );
+            match dao_psp34.mint_for_sale(
+                _convert_string_to_accountid("ZD39yAE4W4RiXCyk1gv6CD2tSaVjQU5KoKfujyft4Xa2GAz"),
+                Id::U8(0),
+            ) {
+                Ok(()) => (),
+                Err(_e) => panic!("Test is failure."),
+            };
+            match dao_psp34.owner_of(Id::U8(0)) {
+                Some(value) => assert_eq!(
+                    value,
+                    _convert_string_to_accountid("ZD39yAE4W4RiXCyk1gv6CD2tSaVjQU5KoKfujyft4Xa2GAz")
+                ),
+                None => panic!("Test is failure."),
+            }
+        }
+
+        #[ink::test]
+        fn sales_for_mint_works_for_error_check() {
+            let mut dao_psp34 = DaoPsp34::new(
+                Id::U8(0),
+                "takahashi".to_string(),
+                "TKH".to_string(),
+                "https://takahashi.com/".to_string(),
+                2000000000000000000,
+                _convert_string_to_accountid("ZAP5o2BjWAo5uoKDE6b6Xkk4Ju7k6bDu24LNjgZbfM3iyiR"),
+                _convert_string_to_accountid("XjMCB8QBUPHqh8VhAUGBETFxo9EY4rzu8ppeR1jpCPMyJjR"),
+            );
+            ink_env::test::set_value_transferred::<ink_env::DefaultEnvironment>(
+                1900000000000000000,
+            );
+            match dao_psp34.mint_for_sale(
+                _convert_string_to_accountid("ZD39yAE4W4RiXCyk1gv6CD2tSaVjQU5KoKfujyft4Xa2GAz"),
+                Id::U8(0),
+            ) {
+                Ok(()) => panic!("Test is failure."),
+                Err(e) => assert_eq!(e,PSP34Error::Custom("You don't pay enough.".to_string())),
+            };
+        }
+
+        #[ink::test]
+        fn withdraw_works(){
+            let accounts =
+                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+            let proposal_manager:AccountId = _convert_string_to_accountid("XjMCB8QBUPHqh8VhAUGBETFxo9EY4rzu8ppeR1jpCPMyJjR");
+            let dao_address = accounts.frank;
+
+            let mut dao_psp34 = DaoPsp34::new(
+                Id::U8(0),
+                "takahashi".to_string(),
+                "TKH".to_string(),
+                "https://takahashi.com/".to_string(),
+                1000000,
+                dao_address,
+                proposal_manager,
+            );
+            ink_env::test::set_value_transferred::<ink_env::DefaultEnvironment>(
+                1000000,
+            );
+            match dao_psp34.mint_for_sale(
+                _convert_string_to_accountid("ZD39yAE4W4RiXCyk1gv6CD2tSaVjQU5KoKfujyft4Xa2GAz"),
+                Id::U8(0),
+            ) {
+                Ok(()) => (),
+                Err(_e) => panic!("Test is failure."),
+            };
+
+            assert_eq!(dao_psp34.get_contract_balance(),1000000);
+
+            let balance = match ink_env::test::get_account_balance::<ink_env::DefaultEnvironment>(dao_address){
+                Ok(value) => value,
+                Err(_e) => panic!("Test is failure."),
+            };
+            assert_eq!(balance,0);
+
+            ink_env::test::set_caller::<ink_env::DefaultEnvironment>(proposal_manager);
+            match dao_psp34.withdraw() {
+                Ok(()) => {
+                    let balance = match ink_env::test::get_account_balance::<ink_env::DefaultEnvironment>(dao_address){
+                        Ok(value) => value,
+                        Err(_e) => panic!("Test is failure."),
+                    };
+                    assert_eq!(balance,1000000)
+                },
+                Err(_e) => panic!("Test is failure."),
+            }
+
         }
 
         fn _convert_string_to_accountid(account_str: &str) -> AccountId {
