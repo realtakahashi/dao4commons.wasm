@@ -14,7 +14,7 @@ mod dao_psp34 {
     use openbrush::{
         contracts::psp34::extensions::{
             metadata::*,
-            mintable::*,
+//            mintable::*,
         },
         traits::Storage,
     };
@@ -79,8 +79,25 @@ mod dao_psp34 {
                     let tmp:u8 = u8;
                     tmp.to_string()
                 },
-                _ => "test".to_string(),
-
+                Id::U16(u16) => {
+                    let tmp:u16 = u16;
+                    tmp.to_string()
+                },
+                Id::U32(u32) => {
+                    let tmp:u32 = u32;
+                    tmp.to_string()
+                },
+                Id::U64(u64) => {
+                    let tmp:u64 = u64;
+                    tmp.to_string()
+                },
+                Id::U128(u128) => {
+                    let tmp:u128 = u128;
+                    tmp.to_string()
+                },
+                Id::Bytes(value) => {
+                    String::from_utf8(value.clone()).unwrap()
+                },
             }
         }
     }
