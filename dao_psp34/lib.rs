@@ -23,7 +23,7 @@ mod dao_psp34 {
         sales_price: u128,
         dao_address: AccountId,
         proposal_manager_address: AccountId,
-        is_token_sales_start: bool,
+        is_token_sales_started: bool,
     }
 
     impl PSP34 for DaoPsp34 {}
@@ -53,14 +53,14 @@ mod dao_psp34 {
                 instance.sales_price = sales_price;
                 instance.dao_address = dao_address;
                 instance.proposal_manager_address = proposal_manager_address;
-                instance.is_token_sales_start = false;
+                instance.is_token_sales_started = false;
             })
         }
 
         #[ink(message)]
         #[ink(payable)]
-        pub fn mint_for_sale(&mut self, account: AccountId, id: Id) -> Result<(), PSP34Error> {
-            if self.is_token_sales_start == false {
+        pub fn mint_for_buy(&mut self, account: AccountId, id: Id) -> Result<(), PSP34Error> {
+            if self.is_token_sales_started == false {
                 return Err(PSP34Error::Custom("Token sales is not opened.".to_string()));
             }
             let transfered_value = self.env().transferred_value();
@@ -104,7 +104,7 @@ mod dao_psp34 {
                     "This function can be called by proposal manager.".to_string(),
                 ));
             }
-            self.is_token_sales_start = is_start;
+            self.is_token_sales_started = is_start;
             Ok(())
         }
 
@@ -197,6 +197,9 @@ mod dao_psp34 {
 
         #[ink::test]
         fn sales_for_mint_works() {
+            let accounts =
+                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+
             let mut dao_psp34 = DaoPsp34::new(
                 Id::U8(0),
                 "takahashi".to_string(),
@@ -206,10 +209,17 @@ mod dao_psp34 {
                 _convert_string_to_accountid("ZAP5o2BjWAo5uoKDE6b6Xkk4Ju7k6bDu24LNjgZbfM3iyiR"),
                 _convert_string_to_accountid("XjMCB8QBUPHqh8VhAUGBETFxo9EY4rzu8ppeR1jpCPMyJjR"),
             );
+
+            let proposal_manager:AccountId = _convert_string_to_accountid("XjMCB8QBUPHqh8VhAUGBETFxo9EY4rzu8ppeR1jpCPMyJjR");
+            ink_env::test::set_caller::<ink_env::DefaultEnvironment>(proposal_manager);
+
+            let _ = dao_psp34.change_token_sale_status(true);
+
+            ink_env::test::set_caller::<ink_env::DefaultEnvironment>(accounts.alice);
             ink_env::test::set_value_transferred::<ink_env::DefaultEnvironment>(
                 2000000000000000000,
             );
-            match dao_psp34.mint_for_sale(
+            match dao_psp34.mint_for_buy(
                 _convert_string_to_accountid("ZD39yAE4W4RiXCyk1gv6CD2tSaVjQU5KoKfujyft4Xa2GAz"),
                 Id::U8(0),
             ) {
@@ -227,6 +237,9 @@ mod dao_psp34 {
 
         #[ink::test]
         fn sales_for_mint_works_for_error_check() {
+            let accounts =
+                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+
             let mut dao_psp34 = DaoPsp34::new(
                 Id::U8(0),
                 "takahashi".to_string(),
@@ -236,10 +249,30 @@ mod dao_psp34 {
                 _convert_string_to_accountid("ZAP5o2BjWAo5uoKDE6b6Xkk4Ju7k6bDu24LNjgZbfM3iyiR"),
                 _convert_string_to_accountid("XjMCB8QBUPHqh8VhAUGBETFxo9EY4rzu8ppeR1jpCPMyJjR"),
             );
+
+            ink_env::test::set_caller::<ink_env::DefaultEnvironment>(accounts.alice);
             ink_env::test::set_value_transferred::<ink_env::DefaultEnvironment>(
                 1900000000000000000,
             );
-            match dao_psp34.mint_for_sale(
+
+            match dao_psp34.mint_for_buy(
+                _convert_string_to_accountid("ZD39yAE4W4RiXCyk1gv6CD2tSaVjQU5KoKfujyft4Xa2GAz"),
+                Id::U8(0),
+            ) {
+                Ok(()) => panic!("Test is failure."),
+                Err(e) => assert_eq!(e,PSP34Error::Custom("Token sales is not opened.".to_string())),
+            };
+
+            let proposal_manager:AccountId = _convert_string_to_accountid("XjMCB8QBUPHqh8VhAUGBETFxo9EY4rzu8ppeR1jpCPMyJjR");
+            ink_env::test::set_caller::<ink_env::DefaultEnvironment>(proposal_manager);
+
+            match dao_psp34.change_token_sale_status(true) {
+                Ok(()) => (),
+                Err(_e) => panic!("Test is failure."),
+            }
+
+            ink_env::test::set_caller::<ink_env::DefaultEnvironment>(accounts.alice);
+            match dao_psp34.mint_for_buy(
                 _convert_string_to_accountid("ZD39yAE4W4RiXCyk1gv6CD2tSaVjQU5KoKfujyft4Xa2GAz"),
                 Id::U8(0),
             ) {
@@ -267,7 +300,18 @@ mod dao_psp34 {
             ink_env::test::set_value_transferred::<ink_env::DefaultEnvironment>(
                 1000000,
             );
-            match dao_psp34.mint_for_sale(
+
+            let proposal_manager:AccountId = _convert_string_to_accountid("XjMCB8QBUPHqh8VhAUGBETFxo9EY4rzu8ppeR1jpCPMyJjR");
+            ink_env::test::set_caller::<ink_env::DefaultEnvironment>(proposal_manager);
+
+            match dao_psp34.change_token_sale_status(true) {
+                Ok(()) => (),
+                Err(_e) => panic!("Test is failure."),
+            }
+
+            ink_env::test::set_caller::<ink_env::DefaultEnvironment>(accounts.alice);
+
+            match dao_psp34.mint_for_buy(
                 _convert_string_to_accountid("ZD39yAE4W4RiXCyk1gv6CD2tSaVjQU5KoKfujyft4Xa2GAz"),
                 Id::U8(0),
             ) {
