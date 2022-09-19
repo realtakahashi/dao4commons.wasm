@@ -1,5 +1,5 @@
 [package]
-name = "dao_psp34"
+name = "dao_psp22"
 version = "0.1.0"
 authors = ["[your_name] <[your_email]>"]
 edition = "2021"
@@ -15,19 +15,18 @@ scale = { package = "parity-scale-codec", version = "3", default-features = fals
 scale-info = { version = "2", default-features = false, features = ["derive"], optional = true }
 
 # define ownly
-openbrush = { tag = "v2.2.0",  git = "https://github.com/Supercolony-net/openbrush-contracts", default-features = false, features = ["psp34"] }
+openbrush = { tag = "v2.2.0",  git = "https://github.com/Supercolony-net/openbrush-contracts", default-features = false, features = ["psp22"] }
 ink_prelude = { version = "3", default-features = false}
 
 [dev-dependencies]
 bs58 = { version = "0.4.0", default-features = false }
 
 [lib]
-name = "dao_psp34"
+name = "dao_psp22"
 path = "lib.rs"
 crate-type = [
 	# Used for normal contract Wasm blobs.
 	"cdylib",
-    "rlib",
 ]
 
 [features]
@@ -40,6 +39,5 @@ std = [
     "scale/std",
     "scale-info/std",
     "openbrush/std",
-    "ink_prelude/std",
 ]
 ink-as-dependency = []

@@ -23,6 +23,7 @@ mod dao_psp34 {
         sales_price: u128,
         dao_address: AccountId,
         proposal_manager_address: AccountId,
+        is_token_sales_start: bool,
     }
 
     impl PSP34 for DaoPsp34 {}
@@ -52,12 +53,16 @@ mod dao_psp34 {
                 instance.sales_price = sales_price;
                 instance.dao_address = dao_address;
                 instance.proposal_manager_address = proposal_manager_address;
+                instance.is_token_sales_start = false;
             })
         }
 
         #[ink(message)]
         #[ink(payable)]
         pub fn mint_for_sale(&mut self, account: AccountId, id: Id) -> Result<(), PSP34Error> {
+            if self.is_token_sales_start == false {
+                return Err(PSP34Error::Custom("Token sales is not opened.".to_string()));
+            }
             let transfered_value = self.env().transferred_value();
             ink_env::debug_println!("     ########## tranfered_value: {:?}", transfered_value);
             if transfered_value < self.sales_price {
@@ -89,6 +94,18 @@ mod dao_psp34 {
                 Ok(()) => Ok(()),
                 Err(_e) => Err(PSP34Error::Custom("The Tranfering is failure.".to_string())),
             }
+        }
+
+        #[ink(message)]
+        pub fn change_token_sale_status(&mut self, is_start:bool) -> Result<(), PSP34Error> {
+            let caller = self.env().caller();
+            if caller != self.proposal_manager_address {
+                return Err(PSP34Error::Custom(
+                    "This function can be called by proposal manager.".to_string(),
+                ));
+            }
+            self.is_token_sales_start = is_start;
+            Ok(())
         }
 
         #[ink(message)]
