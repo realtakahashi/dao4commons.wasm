@@ -182,11 +182,13 @@ pub mod member_manager {
                 },
             };
 
-            if self.get_electoral_commissioner_list(_dao_address).len() == 1 {
-                ink_env::debug_println!("MemberDoesNotExist Error.");
+            let list =  self.get_electoral_commissioner_list(_dao_address);
+            if list.len() == 1 && list[0].member_address == _member_address {
+                ink_env::debug_println!("################ AtLeastOneElectionCommissioner Error.");
                 return Err(Error::AtLeastOneElectionCommissioner);
-            }
 
+            }
+            
             for i in 0..self.next_commissioner_no {
                 let electoral_commissioner_address: AccountId =
                     match self.electoral_commissioner.get(&(_dao_address, i)) {

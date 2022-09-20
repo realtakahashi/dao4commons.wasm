@@ -113,6 +113,26 @@ mod dao_psp34 {
             self.env().balance()
         }
 
+        #[ink(message)]
+        pub fn get_dao_address(&self) -> AccountId {
+            self.dao_address
+        }
+
+        #[ink(message)]
+        pub fn get_proposal_manager_address(&self) -> AccountId {
+            self.proposal_manager_address
+        }
+
+        #[ink(message)]
+        pub fn get_sales_price(&self) -> u128 {
+            self.sales_price
+        }
+
+        #[ink(message)]
+        pub fn get_token_sales_status(&self) -> bool {
+            self.is_token_sales_started
+        }
+
         #[inline]
         fn _get_id_string(&self, id: Id) -> String {
             match id {

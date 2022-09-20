@@ -383,6 +383,15 @@ pub mod proposal_manager {
                         },
                     }
                 },
+                ProposalType::DeleteMember => {
+                    match self.member_manager.delete_member(_dao_address, proposal_info.clone().csv_data){
+                        Ok(()) => (),
+                        Err(e) => {
+                            ink_env::debug_println!("########################### Execute Error.");
+                            return Err(Error::InvalidMemberManagerCall)
+                        },
+                    }
+                },
                 ProposalType::ChangeElectoralCommissioner => {
                     match self.member_manager.change_electoral_commissioner(_dao_address,proposal_info.clone().csv_data,){
                         Ok(()) => (),
