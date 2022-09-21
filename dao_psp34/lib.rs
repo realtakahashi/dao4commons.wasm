@@ -4,7 +4,7 @@
 pub use self::dao_psp34::{DaoPsp34, DaoPsp34Ref};
 
 #[openbrush::contract]
-mod dao_psp34 {
+pub mod dao_psp34 {
     use ink_prelude::{
         string::{String, ToString},
         vec::Vec,
@@ -84,10 +84,9 @@ mod dao_psp34 {
 
         #[ink(message)]
         pub fn withdraw(&mut self) -> Result<(), PSP34Error> {
-            let caller = self.env().caller();
-            if caller != self.proposal_manager_address {
+            if !self._check_calling_from_dao_contract() {
                 return Err(PSP34Error::Custom(
-                    "This function can be called by proposal manager.".to_string(),
+                    "This function can be called by dao contract.".to_string(),
                 ));
             }
             match self.env().transfer(self.dao_address, self.env().balance()) {
@@ -98,10 +97,9 @@ mod dao_psp34 {
 
         #[ink(message)]
         pub fn change_token_sale_status(&mut self, is_start:bool) -> Result<(), PSP34Error> {
-            let caller = self.env().caller();
-            if caller != self.proposal_manager_address {
+            if !self._check_calling_from_dao_contract() {
                 return Err(PSP34Error::Custom(
-                    "This function can be called by proposal manager.".to_string(),
+                    "This function can be called by dao contract.".to_string(),
                 ));
             }
             self.is_token_sales_started = is_start;
@@ -119,11 +117,6 @@ mod dao_psp34 {
         }
 
         #[ink(message)]
-        pub fn get_proposal_manager_address(&self) -> AccountId {
-            self.proposal_manager_address
-        }
-
-        #[ink(message)]
         pub fn get_sales_price(&self) -> u128 {
             self.sales_price
         }
@@ -131,6 +124,11 @@ mod dao_psp34 {
         #[ink(message)]
         pub fn get_token_sales_status(&self) -> bool {
             self.is_token_sales_started
+        }
+
+        #[inline]
+        fn _check_calling_from_dao_contract(&self) -> bool {
+            return self.env().caller() == self.dao_address
         }
 
         #[inline]

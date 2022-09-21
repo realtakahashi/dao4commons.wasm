@@ -17,7 +17,6 @@ pub mod member_manager {
     use ink_storage::traits::{PackedLayout, SpreadLayout};
     use openbrush::contracts::ownable::OwnableError;
     use openbrush::{contracts::ownable::*, modifiers, storage::Mapping, traits::Storage};
-    use rustc_hex::FromHex;
 
     #[derive(
         Default, Debug, Clone, scale::Encode, scale::Decode, SpreadLayout, PackedLayout, PartialEq,

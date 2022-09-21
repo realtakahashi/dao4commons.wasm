@@ -1,11 +1,15 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(min_specialization)]
 
+pub use self::dao_governance_token::{DaoGovernanceToken, DaoGovernanceTokenRef};
+
 #[openbrush::contract]
-mod dao_governance_token {
+pub mod dao_governance_token {
     use ink_prelude::string::{String, ToString};
-    use ink_storage::traits::SpreadAllocate;
     use openbrush::{contracts::psp22::extensions::metadata::*, traits::Storage};
+    use ink_storage::traits::SpreadAllocate;
+    use ink_storage::traits::StorageLayout;
+    use ink_storage::traits::{PackedLayout, SpreadLayout};
 
     #[ink(storage)]
     #[derive(Default, SpreadAllocate, Storage)]

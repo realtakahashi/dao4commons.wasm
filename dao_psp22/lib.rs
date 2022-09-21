@@ -1,8 +1,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(min_specialization)]
 
+pub use self::dao_psp22::{DaoPsp22, DaoPsp22Ref};
+
 #[openbrush::contract]
-mod dao_psp22 {
+pub mod dao_psp22 {
     use ink_prelude::string::{String, ToString};
     use ink_storage::traits::SpreadAllocate;
     use openbrush::{contracts::psp22::extensions::metadata::*, traits::Storage};
@@ -15,7 +17,6 @@ mod dao_psp22 {
         #[storage_field]
         metadata: metadata::Data,
         dao_address: AccountId,
-        proposal_manager_address: AccountId,
         is_token_sales_started: bool,
         sales_price_for_one_token: u128,
     }
@@ -31,7 +32,6 @@ mod dao_psp22 {
             symbol: Option<String>,
             decimal: u8,
             dao_address: AccountId,
-            proposal_manager_address: AccountId,
             sales_price_for_one_token: u128,
         ) -> Self {
             ink_lang::codegen::initialize_contract(|instance: &mut Self| {
@@ -42,7 +42,6 @@ mod dao_psp22 {
                     ._mint(instance.env().account_id(), total_supply)
                     .expect("Should mint total_supply");
                 instance.dao_address = dao_address;
-                instance.proposal_manager_address = proposal_manager_address;
                 instance.is_token_sales_started = false;
                 instance.sales_price_for_one_token = sales_price_for_one_token;
             })
@@ -85,10 +84,9 @@ mod dao_psp22 {
 
         #[ink(message)]
         pub fn withdraw(&mut self) -> Result<(), PSP22Error> {
-            let caller = self.env().caller();
-            if caller != self.proposal_manager_address {
+            if !self._check_calling_from_dao_contract() {
                 return Err(PSP22Error::Custom(
-                    "This function can be called by proposal manager.".to_string(),
+                    "This function can be called by dao constract.".to_string(),
                 ));
             }
             match self.env().transfer(self.dao_address, self.env().balance()) {
@@ -99,10 +97,9 @@ mod dao_psp22 {
 
         #[ink(message)]
         pub fn change_token_sale_status(&mut self, is_start: bool) -> Result<(), PSP22Error> {
-            let caller = self.env().caller();
-            if caller != self.proposal_manager_address {
+            if !self._check_calling_from_dao_contract() {
                 return Err(PSP22Error::Custom(
-                    "This function can be called by proposal manager.".to_string(),
+                    "This function can be called by dao contract.".to_string(),
                 ));
             }
             self.is_token_sales_started = is_start;
@@ -120,11 +117,6 @@ mod dao_psp22 {
         }
 
         #[ink(message)]
-        pub fn get_proposal_manager_address(&self) -> AccountId {
-            self.proposal_manager_address
-        }
-
-        #[ink(message)]
         pub fn get_sales_price_for_one_token(&self) -> u128 {
             self.sales_price_for_one_token
         }
@@ -133,6 +125,12 @@ mod dao_psp22 {
         pub fn get_token_sales_status(&self) -> bool {
             self.is_token_sales_started
         }
+
+        #[inline]
+        fn _check_calling_from_dao_contract(&self) -> bool {
+            return self.env().caller() == self.dao_address
+        }
+
     }
 
     /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`

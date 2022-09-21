@@ -1,5 +1,5 @@
 [package]
-name = "takuhai_dao_contract"
+name = "dao_contract"
 version = "0.1.0"
 authors = ["[your_name] <[your_email]>"]
 edition = "2021"
@@ -14,12 +14,22 @@ ink_lang = { version = "3", default-features = false }
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2", default-features = false, features = ["derive"], optional = true }
 
+# define ownly
+ink_prelude = { version = "3", default-features = false}
+openbrush = {tag = "v2.2.0",  git = "https://github.com/Supercolony-net/openbrush-contracts", default-features = false, features = ["ownable", "psp35"] }
+dao_psp22 = { version = "0.1.0", path = "../dao_psp22", default-features = false, features = ["ink-as-dependency"] }
+dao_psp34 = { version = "0.1.0", path = "../dao_psp34", default-features = false, features = ["ink-as-dependency"] }
+dao_governance_token = { version = "0.1.0", path = "../dao_governance_token", default-features = false, features = ["ink-as-dependency"] }
+rustc-hex = { version="2.1.0", default-features = false }
+bs58 = { version = "0.4.0", default-features = false }
+
 [lib]
-name = "takuhai_dao_contract"
+name = "dao_contract"
 path = "lib.rs"
 crate-type = [
 	# Used for normal contract Wasm blobs.
 	"cdylib",
+    "rlib",
 ]
 
 [features]
@@ -31,5 +41,11 @@ std = [
     "ink_primitives/std",
     "scale/std",
     "scale-info/std",
+    "ink_prelude/std",
+    "openbrush/std",
+    "member_manager/std",
+        "rustc-hex/std",
+    'bs58/std',
+
 ]
 ink-as-dependency = []
