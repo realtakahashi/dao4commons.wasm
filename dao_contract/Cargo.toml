@@ -43,8 +43,7 @@ std = [
     "scale-info/std",
     "ink_prelude/std",
     "openbrush/std",
-    "member_manager/std",
-        "rustc-hex/std",
+    "rustc-hex/std",
     'bs58/std',
 
 ]

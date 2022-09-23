@@ -13,7 +13,6 @@ pub mod dao_contract {
     use ink_storage::traits::SpreadAllocate;
     use ink_storage::traits::StorageLayout;
     use ink_storage::traits::{PackedLayout, SpreadLayout};
-    use member_manager::MemberManagerRef;
     use openbrush::{storage::Mapping, traits::Storage};
 
     #[derive(
@@ -43,6 +42,7 @@ pub mod dao_contract {
         WrongCsvData,
         /// Tranfering Contract Balance is Failure
         TransferingContractBalanceIsFailure,
+        ThisFunctionCanBeCalledFromDaoManager,
     }
 
     pub type Result<T> = core::result::Result<T, Error>;
@@ -56,24 +56,24 @@ pub mod dao_contract {
 
     #[ink(storage)]
     pub struct DaoContract {
-        /// member_manager reference
-        member_manager: MemberManagerRef,
         /// token list id => token info
         token_list_for_id: Mapping<u128, TokenInfo>,
         /// token address => token info
         token_list_for_address: Mapping<AccountId, TokenInfo>,
         /// next token list id
         next_token_id: u128,
+        /// dao manager account id
+        dao_manager_account_id:AccountId,
     }
 
     impl DaoContract {
         #[ink(constructor)]
-        pub fn new(member_manager: MemberManagerRef) -> Self {
+        pub fn new(dao_manager_account_id:AccountId) -> Self {
             Self {
-                member_manager: member_manager,
                 token_list_for_id: Mapping::default(),
                 token_list_for_address: Mapping::default(),
                 next_token_id: 0,
+                dao_manager_account_id:dao_manager_account_id,
             }
         }
 
@@ -83,7 +83,9 @@ pub mod dao_contract {
             token_type: TokenType,
             token_address: AccountId,
         ) -> Result<()> {
-            // todo: check calling from the dao_manager
+            if !self._is_calling_from_proposal_manager() {
+                return Err(Error::ThisFunctionCanBeCalledFromDaoManager);
+            }
 
             let token_info = TokenInfo {
                 token_type: token_type,
@@ -112,7 +114,9 @@ pub mod dao_contract {
 
         #[ink(message)]
         pub fn change_token_sales_status(&mut self, token_address:AccountId, is_start:bool) -> Result<()> {
-            // todo: check from only dao_manager
+            if !self._is_calling_from_proposal_manager() {
+                return Err(Error::ThisFunctionCanBeCalledFromDaoManager);
+            }
 
             let token_info: TokenInfo = match self.token_list_for_address.get(&token_address) {
                 Some(value) => value,
@@ -143,7 +147,9 @@ pub mod dao_contract {
 
         #[ink(message)]
         pub fn withdraw_token_proceeds(&mut self, token_address:AccountId) -> Result<()> {
-            // todo: check from only dao_manager
+            if !self._is_calling_from_proposal_manager() {
+                return Err(Error::ThisFunctionCanBeCalledFromDaoManager);
+            }
 
             let token_info: TokenInfo = match self.token_list_for_address.get(&token_address) {
                 Some(value) => value,
@@ -173,8 +179,11 @@ pub mod dao_contract {
         }
 
         #[ink(message)]
-        pub fn distribute_governance_token(&self, token_address: AccountId, csv_data:String) -> Result<()> {
-            // todo: check from only dao_manager
+        pub fn distribute_governance_token(&mut self, token_address: AccountId, csv_data:String) -> Result<()> {
+            if !self._is_calling_from_proposal_manager() {
+                return Err(Error::ThisFunctionCanBeCalledFromDaoManager);
+            }
+
             let token_info: TokenInfo = match self.token_list_for_address.get(&token_address) {
                 Some(value) => value,
                 None => return Err(Error::TheTokenDoesNotExist),
@@ -183,7 +192,7 @@ pub mod dao_contract {
             match token_info.token_type {
                 TokenType::GovernanceToken => {
                     let mut instance: DaoGovernanceTokenRef = ink_env::call::FromAccountId::from_account_id(token_address);
-                    let lines: Vec<&str> = csv_data.split(',').collect();
+                    let lines: Vec<&str> = csv_data.split('?').collect();
                     for line in lines {
                         let part_data: Vec<&str> = line.split('#').collect();
                         if part_data.len() != 2 {
@@ -208,7 +217,10 @@ pub mod dao_contract {
 
         #[ink(message)]
         pub fn distribute_dao_treasury(&mut self, to:AccountId, amount:Balance) -> Result<()> {
-            // todo: check from only dao_manager
+            if !self._is_calling_from_proposal_manager() {
+                return Err(Error::ThisFunctionCanBeCalledFromDaoManager);
+            }
+
             match self.env().transfer(to,amount) {
                 Ok(()) => Ok(()),
                 Err(_e) => Err(Error::TransferingContractBalanceIsFailure),
@@ -218,6 +230,11 @@ pub mod dao_contract {
         #[ink(message)]
         pub fn get_contract_balance(&self) -> Balance {
             self.env().balance()
+        }
+
+        #[inline]
+        fn _is_calling_from_proposal_manager(&self) -> bool {
+            self.env().caller() == self.dao_manager_account_id
         }
 
         #[inline]
