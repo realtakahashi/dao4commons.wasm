@@ -10,15 +10,15 @@ ink_metadata = { version = "3", default-features = false, features = ["derive"],
 ink_env = { version = "3", default-features = false }
 ink_storage = { version = "3", default-features = false }
 ink_lang = { version = "3", default-features = false }
+scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
+scale-info = { version = "2", default-features = false, features = ["derive"], optional = true }
 # own settings
 ink_storage_derive = { version = "3", default-features = false }
 ink_prelude = { version = "3", default-features = false}
 openbrush = {tag = "v2.2.0",  git = "https://github.com/Supercolony-net/openbrush-contracts", default-features = false, features = ["ownable", "psp35"] }
-
 member_manager = { version = "0.1.0", path = "../member_manager", default-features = false, features = ["ink-as-dependency"] }
+dao_manager = { version = "0.1.0", path = "../dao_manager", default-features = false, features = ["ink-as-dependency"] }
 
-scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
-scale-info = { version = "2", default-features = false, features = ["derive"], optional = true }
 
 [lib]
 name = "proposal_manager"
@@ -39,5 +39,6 @@ std = [
     "scale-info/std",
     "openbrush/std",
     "member_manager/std",
+    "dao_manager/std",
 ]
 ink-as-dependency = []

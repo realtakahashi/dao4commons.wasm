@@ -59,26 +59,26 @@ pub mod dao_manager {
 
         /// add dao token
         /// * This function can be called by proposal manager.
-        /// * csv data is "dao_address,token_address,token_type"
+        /// * csv data is "token_address,token_type"
         #[ink(message)]
-        pub fn add_dao_token(&mut self, csv_data:String) -> Result<()> {
-            let data:Vec<&str> = csv_data.split(',').collect();
-            if data.len() != 3 {
-                return Err(Error::InvalidCsvData);
-            }
-            let dao_account_id = self._convert_string_to_accountid(data[0]);
-            let token_account_id = self._convert_string_to_accountid(data[1]);
-            let token_type = match self._convert_str_2_token_type(data[2]) {
-                Some(value) => value,
-                None => return Err(Error::InvalidCsvData),
-            };
-
+        pub fn add_dao_token(&mut self, dao_account_id:AccountId, csv_data:String) -> Result<()> {
             if !self._is_calling_from_proposal_manager() {
                 return Err(Error::ThisFunctionCanBeCalledFromProposalManager);
             }
             if !self._dao_exists(dao_account_id){
                 return Err(Error::TheDaoDoesNotExist);
             };
+
+            let data:Vec<&str> = csv_data.split(',').collect();
+            if data.len() != 2 {
+                return Err(Error::InvalidCsvData);
+            }
+            let token_account_id = self._convert_string_to_accountid(data[1]);
+            let token_type = match self._convert_str_2_token_type(data[2]) {
+                Some(value) => value,
+                None => return Err(Error::InvalidCsvData),
+            };
+
             let mut instance: DaoContractRef = ink_env::call::FromAccountId::from_account_id(dao_account_id);
             match instance.add_dao_token(token_type, token_account_id) {
                 Ok(()) => Ok(()),
@@ -88,23 +88,23 @@ pub mod dao_manager {
 
         /// change token sales status
         /// * This function can be called by proposal manager.
-        /// * csv data: "dao_address,token_address,is_start("0" or "1")"
+        /// * csv data: "token_address,is_start("0" or "1")"
         #[ink(message)]
-        pub fn change_token_sales_status(&mut self, csv_data:String) -> Result<()> {
-            let data:Vec<&str> = csv_data.split(',').collect();
-            if data.len() != 3 {
-                return Err(Error::InvalidCsvData);
-            }
-            let dao_account_id = self._convert_string_to_accountid(data[0]);
-            let token_account_id = self._convert_string_to_accountid(data[1]);
-            let isStart:bool = self._conver_str_2_bool(data[2]);
-
+        pub fn change_token_sales_status(&mut self, dao_account_id:AccountId, csv_data:String) -> Result<()> {
             if !self._is_calling_from_proposal_manager() {
                 return Err(Error::ThisFunctionCanBeCalledFromProposalManager);
             }
             if !self._dao_exists(dao_account_id){
                 return Err(Error::TheDaoDoesNotExist);
             };
+
+            let data:Vec<&str> = csv_data.split(',').collect();
+            if data.len() != 2 {
+                return Err(Error::InvalidCsvData);
+            }
+            let token_account_id = self._convert_string_to_accountid(data[1]);
+            let isStart:bool = self._conver_str_2_bool(data[2]);
+
             let mut instance: DaoContractRef = ink_env::call::FromAccountId::from_account_id(dao_account_id);
             match instance.change_token_sales_status(token_account_id, isStart) {
                 Ok(()) => Ok(()),
@@ -114,22 +114,22 @@ pub mod dao_manager {
 
         /// withdraw token proceeds
         /// * This function can be called by proposal manager.
-        /// * csv_data: "dao_address,token_address"
+        /// * csv_data: "token_address"
         #[ink(message)]
-        pub fn withdraw_token_proceeds(&mut self, csv_data:String) -> Result<()> {
-            let data:Vec<&str> = csv_data.split(',').collect();
-            if data.len() != 2 {
-                return Err(Error::InvalidCsvData);
-            }
-            let dao_account_id = self._convert_string_to_accountid(data[0]);
-            let token_account_id = self._convert_string_to_accountid(data[1]);
-
+        pub fn withdraw_token_proceeds(&mut self, dao_account_id:AccountId, csv_data:String) -> Result<()> {
             if !self._is_calling_from_proposal_manager() {
                 return Err(Error::ThisFunctionCanBeCalledFromProposalManager);
             }
             if !self._dao_exists(dao_account_id){
                 return Err(Error::TheDaoDoesNotExist);
             };
+
+            let data:Vec<&str> = csv_data.split(',').collect();
+            if data.len() != 1 {
+                return Err(Error::InvalidCsvData);
+            }
+            let token_account_id = self._convert_string_to_accountid(data[1]);
+
             let mut instance: DaoContractRef = ink_env::call::FromAccountId::from_account_id(dao_account_id);
             match instance.withdraw_token_proceeds(token_account_id) {
                 Ok(()) => Ok(()),
@@ -139,23 +139,23 @@ pub mod dao_manager {
 
         /// distribute governance token
         /// * This function can be called by proposal manager.
-        /// * csv_data : "dao_address,token_address,list_of_reciever("reciver_data1(reciver_eoa#amount)?reciver_data2?...")"
+        /// * csv_data : "token_address,list_of_reciever("reciver_data1(reciver_eoa#amount)?reciver_data2?...")"
         #[ink(message)]
-        pub fn distribute_governance_token(&mut self, csv_data:String) -> Result<()> {
-            let data:Vec<&str> = csv_data.split(',').collect();
-            if data.len() != 3 {
-                return Err(Error::InvalidCsvData);
-            }
-            let dao_account_id = self._convert_string_to_accountid(data[0]);
-            let token_account_id = self._convert_string_to_accountid(data[1]);
-            let list_of_reciver:String = data[2].to_string();
-
+        pub fn distribute_governance_token(&mut self, dao_account_id:AccountId, csv_data:String) -> Result<()> {
             if !self._is_calling_from_proposal_manager() {
                 return Err(Error::ThisFunctionCanBeCalledFromProposalManager);
             }
             if !self._dao_exists(dao_account_id){
                 return Err(Error::TheDaoDoesNotExist);
             };
+
+            let data:Vec<&str> = csv_data.split(',').collect();
+            if data.len() != 2 {
+                return Err(Error::InvalidCsvData);
+            }
+            let token_account_id = self._convert_string_to_accountid(data[1]);
+            let list_of_reciver:String = data[2].to_string();
+
             let mut instance: DaoContractRef = ink_env::call::FromAccountId::from_account_id(dao_account_id);
             match instance.distribute_governance_token(token_account_id, list_of_reciver) {
                 Ok(()) => Ok(()),
@@ -165,23 +165,23 @@ pub mod dao_manager {
 
         /// distribute dao treasury
         /// * This function can be called by proposal manager.
-        /// * csv_data: "dao_address,reciver_address,amount"
+        /// * csv_data: "reciver_address,amount"
         #[ink(message)]
-        pub fn distribute_dao_treasury(&mut self, csv_data:String) -> Result<()> {
-            let data:Vec<&str> = csv_data.split(',').collect();
-            if data.len() != 3 {
-                return Err(Error::InvalidCsvData);
-            }
-            let dao_account_id = self._convert_string_to_accountid(data[0]);
-            let to = self._convert_string_to_accountid(data[1]);
-            let amount:u128 = data[2].parse().unwrap();
-
+        pub fn distribute_dao_treasury(&mut self, dao_account_id:AccountId, csv_data:String) -> Result<()> {
             if !self._is_calling_from_proposal_manager() {
                 return Err(Error::ThisFunctionCanBeCalledFromProposalManager);
             }
             if !self._dao_exists(dao_account_id){
                 return Err(Error::TheDaoDoesNotExist);
             };
+
+            let data:Vec<&str> = csv_data.split(',').collect();
+            if data.len() != 2 {
+                return Err(Error::InvalidCsvData);
+            }
+            let to = self._convert_string_to_accountid(data[1]);
+            let amount:u128 = data[2].parse().unwrap();
+
             let mut instance: DaoContractRef = ink_env::call::FromAccountId::from_account_id(dao_account_id);
             match instance.distribute_dao_treasury(to, amount) {
                 Ok(()) => Ok(()),

@@ -14,6 +14,7 @@ pub mod proposal_manager {
     use ink_storage::traits::StorageLayout;
     use ink_storage::traits::{PackedLayout, SpreadLayout};
     use member_manager::MemberManagerRef;
+    use dao_manager::DaoManagerRef;
     use openbrush::{storage::Mapping, traits::Storage};
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -51,6 +52,7 @@ pub mod proposal_manager {
         NotExpirationOfTermOfElectionCommissioner,
         /// Invalid Member Manager Call
         InvalidMemberManagerCall,
+        InvalidDaoManagerCall,
     }
 
     pub type Result<T> = core::result::Result<T, Error>;
@@ -93,7 +95,9 @@ pub mod proposal_manager {
         ChangeElectoralCommissioner,
         UseDaoTresury,
         IssueToken,
-        SellToken,
+        ChangeStatusOfTokenSale,
+        WithdrawTokenSales,
+        DistributeGovernanceToken,
     }
 
     pub const MAJORITY_PERCENTAGE_DEFINITION: u16 = 50;
@@ -130,6 +134,8 @@ pub mod proposal_manager {
     pub struct ProposalManager {
         /// member_manager reference
         member_manager: MemberManagerRef,
+        /// dao_manager reference
+        dao_manager: DaoManagerRef,
         /// proposal_id
         next_proposal_id: u128,
         /// dao_address => count of tenure
@@ -145,12 +151,13 @@ pub mod proposal_manager {
     impl ProposalManager {
         /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
-        pub fn new(_member_manager: MemberManagerRef) -> Self {
+        pub fn new(_member_manager: MemberManagerRef, dao_manager:DaoManagerRef) -> Self {
             // ink_lang::utils::initialize_contract(|instance: &mut Self| {
             //     instance.member_manager = _member_manager;
             // })
             Self {
                 member_manager: _member_manager,
+                dao_manager : dao_manager,
                 next_proposal_id: 0,
                 count_of_tenure: Mapping::default(),
                 proposal_infoes: Mapping::default(),
@@ -398,6 +405,36 @@ pub mod proposal_manager {
                         Err(e) => return Err(Error::InvalidMemberManagerCall),
                     };
                     self.clear_tenure_count(_dao_address);
+                },
+                ProposalType::IssueToken => {
+                    match self.dao_manager.add_dao_token(_dao_address,proposal_info.clone().csv_data){
+                        Ok(()) => (),
+                        Err(e) => return Err(Error::InvalidDaoManagerCall),
+                    }
+                },
+                ProposalType::ChangeStatusOfTokenSale => {
+                    match self.dao_manager.change_token_sales_status(_dao_address,proposal_info.clone().csv_data){
+                        Ok(()) => (),
+                        Err(e) => return Err(Error::InvalidDaoManagerCall),
+                    }
+                },
+                ProposalType::WithdrawTokenSales => {
+                    match self.dao_manager.withdraw_token_proceeds(_dao_address,proposal_info.clone().csv_data){
+                        Ok(()) => (),
+                        Err(e) => return Err(Error::InvalidDaoManagerCall),
+                    }
+                },
+                ProposalType::DistributeGovernanceToken => {
+                    match self.dao_manager.distribute_governance_token(_dao_address,proposal_info.clone().csv_data){
+                        Ok(()) => (),
+                        Err(e) => return Err(Error::InvalidDaoManagerCall),
+                    }
+                },
+                ProposalType::UseDaoTresury => {
+                    match self.dao_manager.distribute_dao_treasury(_dao_address,proposal_info.clone().csv_data){
+                        Ok(()) => (),
+                        Err(e) => return Err(Error::InvalidDaoManagerCall),
+                    }
                 },
                 _ => return Err(Error::NotImplemented),
             };
