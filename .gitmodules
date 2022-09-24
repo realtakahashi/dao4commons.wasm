@@ -1,0 +1,3 @@
+[submodule "frontend/dao4.frontend.common.wasm"]
+	path = frontend/dao4.frontend.common.wasm
+	url = https://github.com/realtakahashi/dao4.frontend.common.wasm.git
