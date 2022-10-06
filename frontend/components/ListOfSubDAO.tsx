@@ -1,17 +1,21 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import {
   SubDAOData,
   SubDAODataWithMemberFlg,
-} from "../dao4.frontend.common/types/SubDaoType";
+} from "../dao4.frontend.common.wasm/types/SubDaoType";
 import {
   getDaoListOfAffiliation,
   listSubDAO,
-} from "../dao4.frontend.common/contracts/subdao_api";
+  listDAOAddress,
+} from "../dao4.frontend.common.wasm/contracts/subdao_api";
 import { useEffect } from "react";
 import Link from "next/link";
-import Donate from "@/dao4.frontend.common/components/Donate";
-import { TargetDaoKind } from "@/dao4.frontend.common/types/MasterDaoType";
+import Donate from "@/dao4.frontend.common.wasm/components/Donate";
+import { TargetDaoKind } from "@/dao4.frontend.common.wasm/types/MasterDaoType";
 import TokenList from "./TokenList";
+
+import { get_selected_address, get_account_info } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
+import type { InjectedAccountWithMeta } from "@polkadot/extension-inject/types";
 
 const ListOfSubDAO = () => {
   const [subDaoList, setSubDaoList] =
@@ -24,20 +28,16 @@ const ListOfSubDAO = () => {
     daoName: "",
     daoAddress: "",
     githubURL: "",
-    rewardApproved: false,
     description: "",
-    ownerAddress: "",
     isMember: false,
   });
 
   const getSubDaoList = async () => {
     //console.log("## getSubDaoList call 1");
-    let masterDaoAddress =
-      String(process.env.NEXT_PUBLIC_MASTERDAO_CONTRACT_ADDRESS) ?? "";
-    let memberManagerAddress =
-      process.env.NEXT_PUBLIC_MEMBER_MANAGER_CONTRACT_ADDRESS ?? "";
-    const list = await listSubDAO(masterDaoAddress);
-    const result = await getDaoListOfAffiliation(memberManagerAddress, list);
+    const selectedAccount = await get_account_info(get_selected_address());
+    const dao_address_list = await listDAOAddress(selectedAccount.address);
+    const list = await listSubDAO(selectedAccount.address,dao_address_list);
+    const result = await getDaoListOfAffiliation(selectedAccount.address, list);
     setSubDaoList(result);
   };
 
@@ -151,7 +151,7 @@ const ListOfSubDAO = () => {
         </div>
       )}
       ;
-      {showDonate == true && (
+      {/* {showDonate == true && (
         <Donate
           daoAddress={selectDao.daoAddress}
           daoName={selectDao.daoName}
@@ -165,7 +165,7 @@ const ListOfSubDAO = () => {
           setShowList={setShowList}
           forMember={false}
         ></TokenList>
-      )}
+      )} */}
     </>
   );
 };

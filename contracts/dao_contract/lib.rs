@@ -49,6 +49,14 @@ pub mod dao_contract {
 
     #[derive(Debug, Clone, scale::Encode, scale::Decode, SpreadLayout, PackedLayout, PartialEq)]
     #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
+    pub struct DaoInfo {
+        dao_name: String,
+        github_url: String,
+        description: String,
+    }
+
+    #[derive(Debug, Clone, scale::Encode, scale::Decode, SpreadLayout, PackedLayout, PartialEq)]
+    #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
     pub struct TokenInfo {
         token_type: TokenType,
         token_address: AccountId,
@@ -64,17 +72,29 @@ pub mod dao_contract {
         next_token_id: u128,
         /// dao manager account id
         dao_manager_account_id:AccountId,
+        /// dao info
+        dao_info:DaoInfo,
     }
 
     impl DaoContract {
         #[ink(constructor)]
-        pub fn new(dao_manager_account_id:AccountId) -> Self {
+        pub fn new(dao_manager_account_id:AccountId, dao_name:String, github_url:String, description:String) -> Self {
             Self {
                 token_list_for_id: Mapping::default(),
                 token_list_for_address: Mapping::default(),
                 next_token_id: 0,
-                dao_manager_account_id:dao_manager_account_id,
+                dao_manager_account_id: dao_manager_account_id,
+                dao_info: DaoInfo {
+                    dao_name: dao_name,
+                    github_url: github_url,
+                    description: description,
+                },
             }
+        }
+
+        #[ink(message)]
+        pub fn get_dao_info(&self) -> DaoInfo {
+            self.dao_info.clone()
         }
 
         #[ink(message)]

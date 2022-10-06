@@ -10,8 +10,9 @@ pub mod dao_manager {
     use ink_storage::traits::SpreadAllocate;
     use ink_storage::traits::StorageLayout;
     use ink_storage::traits::{PackedLayout, SpreadLayout};
-    use openbrush::{storage::Mapping, traits::Storage};
     use dao_contract::dao_contract::{DaoContractRef, TokenType};
+    use openbrush::contracts::ownable::OwnableError;
+    use openbrush::{contracts::ownable::*, modifiers, storage::Mapping, traits::Storage};
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
@@ -29,6 +30,7 @@ pub mod dao_manager {
     pub type Result<T> = core::result::Result<T, Error>;
 
     #[ink(storage)]
+    #[derive(SpreadAllocate, Storage, Default)]
     pub struct DaoManager {
         proposal_manager_account_id:AccountId,
         /// id => dao address
@@ -36,17 +38,33 @@ pub mod dao_manager {
         /// dao address => id
         dao_list_for_address: Mapping<AccountId, u128>,
         next_id:u128,
+        #[storage_field]
+        ownable: ownable::Data,
+        owner: AccountId,
     }
+
+    impl Ownable for DaoManager {}
 
     impl DaoManager {
         #[ink(constructor)]
-        pub fn new(proposal_manager_account_id:AccountId) -> Self {
-            Self { 
-                proposal_manager_account_id: proposal_manager_account_id,
-                dao_list_for_id: Mapping::default(),
-                dao_list_for_address: Mapping::default(),
-                next_id:0,
-             }
+        pub fn new() -> Self {
+            ink_lang::utils::initialize_contract(|instance: &mut Self| {
+                let caller = instance.env().caller();
+                instance._init_with_owner(caller);
+            })
+
+            // Self { 
+            //     proposal_manager_account_id: proposal_manager_account_id,
+            //     dao_list_for_id: Mapping::default(),
+            //     dao_list_for_address: Mapping::default(),
+            //     next_id:0,
+            //  }
+        }
+
+        #[ink(message)]
+        pub fn set_proposal_manager_account_id(&mut self, proposal_manager_account_id:AccountId) -> Result<()> {
+            self.proposal_manager_account_id = proposal_manager_account_id;
+            Ok(())
         }
 
         #[ink(message)]
@@ -55,6 +73,18 @@ pub mod dao_manager {
             self.dao_list_for_address.insert(&dao_account_id, &self.next_id);
             self.next_id = self.next_id + 1;
             Ok(())
+        }
+
+        #[ink(message)]
+        pub fn get_dao_list(&self) -> Vec<AccountId> {
+            let mut list:Vec<AccountId> = Vec::new();
+            for i in 0..self.next_id {
+                match self.dao_list_for_id.get(&i) {
+                    Some(value) => list.push(value.clone()),
+                    None => (),
+                }
+            }
+            list
         }
 
         /// add dao token

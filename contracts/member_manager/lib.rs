@@ -259,6 +259,16 @@ pub mod member_manager {
             return result;
         }
 
+        /// check the caller is the member of dao
+        #[ink(message)]
+        pub fn is_Member(&self, dao_address:AccountId) -> bool {
+            let caller = self.env().caller();
+            match self.member_infoes.get(&(dao_address,caller)) {
+                Some(_value) => true,
+                None => false,
+            }
+        }
+
         /// modifier of only member
         #[ink(message)]
         pub fn modifier_only_member(&self, caller: AccountId, _dao_address: AccountId) -> bool {

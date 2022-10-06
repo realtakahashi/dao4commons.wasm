@@ -1,11 +1,12 @@
-import { addFirstMember } from "../dao4.frontend.common/contracts/membermanager_api";
+import { addFirstMember } from "../dao4.frontend.common.wasm/contracts/membermanager_api";
 import { useState } from "react";
-import { FirstMemberData } from "../dao4.frontend.common/types/MemberManagerType";
+import { FirstMemberData } from "../dao4.frontend.common.wasm/types/MemberManagerType";
+import { useAccountContext } from "@/hooks/account_context";
+import { get_account_info, get_selected_address } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
 
 interface FirstMemberParameter {
   setCheckAddFirstMember: (flg: boolean) => void;
   subDaoAddress: string;
-  tokenId: string;
 }
 
 const AddFirstMmeber = (props: FirstMemberParameter) => {
@@ -13,6 +14,8 @@ const AddFirstMmeber = (props: FirstMemberParameter) => {
     ownerName: "",
     tokenId: 0,
   });
+
+  // const selectedAccount = useAccountContext();
 
   const onChangeInput = (event: React.ChangeEvent<HTMLInputElement>) => {
     setMemberValue({
@@ -23,12 +26,12 @@ const AddFirstMmeber = (props: FirstMemberParameter) => {
 
   const _onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const memberManagerAddress =
-      process.env.NEXT_PUBLIC_MEMBER_MANAGER_CONTRACT_ADDRESS ?? "";
-    memberValue.tokenId = parseInt(props.tokenId);
-
-    const result = await addFirstMember(memberValue,memberManagerAddress,props.subDaoAddress,props.setCheckAddFirstMember);
-    props.setCheckAddFirstMember(true);
+    const selectedAccount = await get_account_info(get_selected_address());
+    const result = await addFirstMember(
+      selectedAccount,
+      memberValue,
+      props.subDaoAddress,
+      props.setCheckAddFirstMember);
   };
 
   return (

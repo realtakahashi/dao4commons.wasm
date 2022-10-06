@@ -1,12 +1,13 @@
-import { deploySubDAO } from "../dao4.frontend.common/contracts/subdao_api";
-import { SubDAODeployFormData } from "../dao4.frontend.common/types/SubDaoType";
+import { deploySubDAO } from "../dao4.frontend.common.wasm/contracts/subdao_api";
+import { SubDAODeployFormData } from "../dao4.frontend.common.wasm/types/SubDaoType";
 import { useState } from "react";
+import { useAccountContext } from "@/hooks/account_context";
+import { get_account_info, get_selected_address } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
 
 interface DeployDaoParameter {
-  memberNFTAddress: string;
   setCheckDeployDao: (flg: boolean) => void;
   setDaoAddress: (address: string) => void;
-  setDaoValue: (daoValue:SubDAODeployFormData) => void;
+  setDaoValue: (daoValue: SubDAODeployFormData) => void;
 }
 
 const DeployDAO = (props: DeployDaoParameter) => {
@@ -14,8 +15,6 @@ const DeployDAO = (props: DeployDaoParameter) => {
   const [daoValue, setDaoValue] = useState<SubDAODeployFormData>({
     name: "",
     githubUrl: "",
-    memberNFTAddress: "",
-    ownerName: "",
     description: "",
   });
 
@@ -35,13 +34,14 @@ const DeployDAO = (props: DeployDaoParameter) => {
 
   const _onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const memberManagerAddress =
-      process.env.NEXT_PUBLIC_MEMBER_MANAGER_CONTRACT_ADDRESS ?? "";
-    const proposalManagerAddress =
-      process.env.NEXT_PUBLIC_PROPOSAL_MANAGER_CONTRACT_ADDRESS ?? "";
-    daoValue.memberNFTAddress = props.memberNFTAddress;
-    setDaoAddress(
-      await deploySubDAO(daoValue, memberManagerAddress, proposalManagerAddress, props.setDaoAddress, props.setCheckDeployDao)
+    const selectedAccount = await get_account_info(get_selected_address());
+    console.log("_onSubmit-selectedAccount: ",selectedAccount);
+    await deploySubDAO(
+      selectedAccount,
+      daoValue,
+      props.setDaoAddress,
+      setDaoAddress,
+      props.setCheckDeployDao
     );
     props.setDaoValue(daoValue);
   };
@@ -71,18 +71,6 @@ const DeployDAO = (props: DeployDaoParameter) => {
                   className="appearance-none rounded w-2/3 py-2 px-4 
                         leading-tight focus:outline-none focus:bg-white focus:border-orange-500"
                   name="githubUrl"
-                  type="text"
-                  onChange={onChangeInput}
-                ></input>
-              </td>
-            </tr>
-            <tr>
-              <th className=" flex justify-end px-4 py-2">Owner Name:</th>
-              <td className=" px-4 py-2">
-                <input
-                  className="appearance-none rounded w-2/3 py-2 px-4 
-                        leading-tight focus:outline-none focus:bg-white focus:border-orange-500"
-                  name="ownerName"
                   type="text"
                   onChange={onChangeInput}
                 ></input>
