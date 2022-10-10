@@ -78,13 +78,6 @@ pub mod proposal_manager {
         Finished,
     }
 
-    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
-    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-    pub enum YesOrNoWithTheProposal {
-        Yes,
-        No,
-    }
-
     #[derive(
         Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout,
     )]
@@ -115,7 +108,8 @@ pub mod proposal_manager {
         proposer: AccountId,
         title: String,
         outline: String,
-        detail: String,
+        details: String,
+        githubUrl: String,
         status: ProposalStatus,
         csv_data: String,
     }
@@ -170,25 +164,26 @@ pub mod proposal_manager {
         #[ink(message)]
         pub fn add_proposal(
             &mut self,
-            _proposal_type: ProposalType,
-            _dao_address: AccountId,
-            _title: String,
-            _outline: String,
-            _detail: String,
-            _csv_data: String,
+            proposal_type: ProposalType,
+            dao_address: AccountId,
+            title: String,
+            outline: String,
+            details: String,
+            githubUrl: String,
+            csv_data: String,
         ) -> Result<()> {
             let caller = self.env().caller();
             if self
                 .member_manager
-                .modifier_only_member(caller, _dao_address)
+                .modifier_only_member(caller, dao_address)
                 == false
             {
                 ink_env::debug_println!("################### not member error.");
                 return Err(Error::OnlyMemberDoes);
             }
 
-            let limit = self.is_limit_tenure_count_of_electoral_commissioner(_dao_address);
-            match _proposal_type {
+            let limit = self.is_limit_tenure_count_of_electoral_commissioner(dao_address);
+            match proposal_type {
                 ProposalType::ChangeElectoralCommissioner => match limit {
                     true => (),
                     false => return Err(Error::NotExpirationOfTermOfElectionCommissioner),
@@ -200,17 +195,18 @@ pub mod proposal_manager {
             };
 
             let proposal_info = ProposalInfo {
-                proposal_type: _proposal_type,
+                proposal_type: proposal_type,
                 proposal_id: self.next_proposal_id,
-                title: _title,
-                outline: _outline,
-                detail: _detail,
+                title: title,
+                outline: outline,
+                details: details,
                 status: self::ProposalStatus::Proposed,
                 proposer: caller,
-                csv_data: _csv_data,
+                githubUrl: githubUrl,
+                csv_data: csv_data,
             };
             self.proposal_infoes
-                .insert(&(_dao_address, self.next_proposal_id), &proposal_info);
+                .insert(&(dao_address, self.next_proposal_id), &proposal_info);
             self.next_proposal_id = self.next_proposal_id + 1;
             Ok(())
         }
@@ -233,21 +229,21 @@ pub mod proposal_manager {
         #[ink(message)]
         pub fn vote_for_the_proposal(
             &mut self,
-            _dao_address: AccountId,
-            _proposal_id: u128,
-            _yes_or_no: YesOrNoWithTheProposal,
+            dao_address: AccountId,
+            proposal_id: u128,
+            vote_yes: bool,
         ) -> Result<()> {
             let caller = self.env().caller();
             if self
                 .member_manager
-                .modifier_only_member(caller, _dao_address)
+                .modifier_only_member(caller, dao_address)
                 == false
             {
                 return Err(Error::OnlyMemberDoes);
             }
 
             let mut proposal_info: ProposalInfo =
-                match self.proposal_infoes.get(&(_dao_address, _proposal_id)) {
+                match self.proposal_infoes.get(&(dao_address, proposal_id)) {
                     Some(value) => value,
                     None => return Err(Error::ProposalDoesNotExist),
                 };
@@ -256,7 +252,7 @@ pub mod proposal_manager {
             }
 
             let mut voted_list: Vec<AccountId> =
-                match self.voted_people.get(&(_dao_address, _proposal_id)) {
+                match self.voted_people.get(&(dao_address, proposal_id)) {
                     Some(value) => match value.contains(&caller) {
                         true => return Err(Error::AlreadyVoted),
                         _ => value,
@@ -265,30 +261,30 @@ pub mod proposal_manager {
                 };
             voted_list.push(caller);
             self.voted_people
-                .insert(&(_dao_address, _proposal_id), &voted_list);
+                .insert(&(dao_address, proposal_id), &voted_list);
 
             let mut yes_value = 0;
             let mut no_value = 0;
-            match _yes_or_no {
-                YesOrNoWithTheProposal::Yes => yes_value = yes_value + 1,
-                YesOrNoWithTheProposal::No => no_value = no_value + 1,
+            match vote_yes {
+                true => yes_value = yes_value + 1,
+                false => no_value = no_value + 1,
             };
 
             let vote_result: VotingResult =
-                match self.voting_results.get(&(_dao_address, _proposal_id)) {
+                match self.voting_results.get(&(dao_address, proposal_id)) {
                     Some(mut value) => {
                         value.yes = value.yes + yes_value;
                         value.no = value.no + no_value;
                         value
                     }
                     None => VotingResult {
-                        proposal_id: _proposal_id,
+                        proposal_id: proposal_id,
                         yes: yes_value,
                         no: no_value,
                     },
                 };
             self.voting_results
-                .insert(&(_dao_address, _proposal_id), &vote_result);
+                .insert(&(dao_address, proposal_id), &vote_result);
             Ok(())
         }
 

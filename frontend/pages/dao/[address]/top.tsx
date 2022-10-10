@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import DaoBalance from "dao4.frontend.common/components/DaoBalance";
+import DaoBalance from "dao4.frontend.common.wasm/components/DaoBalance";
 import { useRouter } from "next/router";
-import { getDaoName } from "dao4.frontend.common/contracts/subdao_api";
-import Member from "@/dao4.frontend.common/components/Member";
-import Proposal from "@/dao4.frontend.common/components/Proposal";
-import Donate from "@/dao4.frontend.common/components/Donate";
-import { TargetDaoKind } from "@/dao4.frontend.common/types/MasterDaoType";
-import Divide from "@/dao4.frontend.common/components/Divide";
-import MemberNFTAddress from "@/components/MemberNFTAddress";
+import { getDaoName } from "dao4.frontend.common.wasm/contracts/subdao_api";
+import Member from "@/dao4.frontend.common.wasm/components/Member";
+import Proposal from "@/dao4.frontend.common.wasm/components/Proposal";
+import Donate from "@/dao4.frontend.common.wasm/components/Donate";
+import { TargetDaoKind } from "@/dao4.frontend.common.wasm/types/MasterDaoType";
+import Divide from "@/dao4.frontend.common.wasm/components/Divide";
+import { get_account_info, get_selected_address } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
 
 const DaoTop = () => {
   const router = useRouter();
@@ -24,7 +24,8 @@ const DaoTop = () => {
   },[])
 
   const _getDaoName = async () => {
-    setDaoName(await getDaoName(subDAOaddress));
+    const selectedAccount = await get_account_info(get_selected_address());
+    setDaoName(await getDaoName(selectedAccount.address,subDAOaddress));
   }
 
   const _setShow = (showMember:boolean,showProposal:boolean,showDonate:boolean,showDivide:boolean) =>{
@@ -47,9 +48,6 @@ const DaoTop = () => {
         </div>
         <div className="p-4 text-center">
           <DaoBalance daoAddress={subDAOaddress} isMasterDao={false}></DaoBalance>
-        </div>
-        <div className="p-4 text-center">
-          <MemberNFTAddress daoAddress={subDAOaddress}></MemberNFTAddress>
         </div>
         <div className="p-1 text-center text-25px">
           <button 
@@ -90,12 +88,12 @@ const DaoTop = () => {
         {showProposal == true &&(
           <Proposal daoAddress={subDAOaddress}></Proposal>
         )}
-        {showDonate == true && (
+        {/* {showDonate == true && (
           <Donate daoAddress={subDAOaddress} daoName={daoName} targetDaoKind={TargetDaoKind.TARGET_DAO_FROM_INDIVIDIALS}></Donate>
         )}
         {showDivide == true && (
           <Divide  daoAddress={subDAOaddress} daoName={daoName} targetDaoKind={TargetDaoKind.NONE}></Divide>
-        )}
+        )} */}
       </div>
     </>
   );

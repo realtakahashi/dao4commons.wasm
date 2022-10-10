@@ -118,6 +118,7 @@ pub mod member_manager {
         }
 
         /// add a member
+        /// * csv_data: name, member_address, 0, 0
         #[ink(message)]
         pub fn add_member(
             &mut self,
@@ -152,6 +153,7 @@ pub mod member_manager {
         }
 
         /// delete the member
+        /// * csv_data: eoa_address * you have to set only one address.
         #[ink(message)]
         pub fn delete_member(&mut self, _dao_address: AccountId, _csv_data: String) -> ResultTransaction<()> {
             if self.modifier_only_call_from_proposal_manager() == false {
@@ -205,6 +207,7 @@ pub mod member_manager {
         }
 
         /// change electoral commissioner
+        /// *csv_data: eoa_address, eoa_address,....
         #[ink(message)]
         pub fn change_electoral_commissioner(
             &mut self,
@@ -261,12 +264,31 @@ pub mod member_manager {
 
         /// check the caller is the member of dao
         #[ink(message)]
-        pub fn is_Member(&self, dao_address:AccountId) -> bool {
+        pub fn is_member(&self, dao_address:AccountId) -> bool {
             let caller = self.env().caller();
             match self.member_infoes.get(&(dao_address,caller)) {
                 Some(_value) => true,
                 None => false,
             }
+        }
+
+        /// chack caller whether is electoral commissioner
+        #[ink(message)]
+        pub fn is_electoral_commissioner(
+            &self,
+            dao_address: AccountId,
+        ) -> bool {
+            for i in 0..self.next_commissioner_no {
+                match self.electoral_commissioner.get(&(dao_address, i)) {
+                    Some(value) => {
+                        if value == self.env().caller() {
+                            return true;
+                        }
+                    }
+                    None => return false,
+                };
+            }
+            false
         }
 
         /// modifier of only member

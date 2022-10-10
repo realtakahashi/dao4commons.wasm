@@ -2,7 +2,7 @@ module.exports = {
   content: [
     "./pages/**/*.{js,ts,jsx,tsx}",
     "./components/**/*.{js,ts,jsx,tsx}",
-    "./dao4.frontend.common/**/*.{js,ts,jsx,tsx}"
+    "./dao4.frontend.common.wasm/**/*.{js,ts,jsx,tsx}"
   ],
   theme: {
     fontSize: {
