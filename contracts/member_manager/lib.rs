@@ -36,16 +36,18 @@ pub mod member_manager {
     pub struct MemberManager {
         #[storage_field]
         ownable: ownable::Data,
-        next_commissioner_no: u16,
-        next_member_id: u16,
         proposal_manager_address: AccountId,
         owner: AccountId,
         // ( DAO address , EOA Address ) => MemberInfo
         member_infoes: Mapping<(AccountId, AccountId), MemberInfo>,
         // ( DAO address , member_id ) => MemberInfo
         member_infoes_from_id: Mapping<(AccountId, u16), MemberInfo>,
-        // ( DAO address , commissioner_no ) = EOA Address
+        // ( DAO address , commissioner_no ) => EOA Address
         electoral_commissioner: Mapping<(AccountId, u16), AccountId>,
+        // DAO address => member_id
+        next_memger_ids: Mapping<AccountId, u16>,
+        // DAO address => commissioner_no
+        next_commissioner_nos: Mapping<AccountId, u16>,
     }
 
     impl Ownable for MemberManager {}
@@ -75,6 +77,8 @@ pub mod member_manager {
         InvalidDeleteMemberCount,
         /// At least one election commissioner
         AtLeastOneElectionCommissioner,
+        /// Possible bug
+        PossibleBug,
     }
 
     pub type ResultTransaction<T> = core::result::Result<T, Error>;
@@ -105,15 +109,17 @@ pub mod member_manager {
         #[ink(message)]
         pub fn add_first_member(
             &mut self,
-            _dao_address: AccountId,
-            _member_address: AccountId,
-            _name: String,
-            _token_id: u16,
+            dao_address: AccountId,
+            member_address: AccountId,
+            name: String,
+            token_id: u16,
         ) -> ResultTransaction<()> {
-            if self.get_member_list(_dao_address).len() != 0 {
+            if self.get_member_list(dao_address).len() != 0 {
                 return Err(Error::NotFirstMember);
             }
-            self.inline_add_member(_dao_address, _name, _member_address, _token_id, true);
+            self.next_memger_ids.insert(&dao_address,&0);
+            self.next_commissioner_nos.insert(&dao_address,&0);
+            self.inline_add_member(dao_address, name, member_address, token_id, true);
             Ok(())
         }
 
@@ -126,20 +132,23 @@ pub mod member_manager {
             _csv_data: String,
         ) -> ResultTransaction<()> {
             if self.modifier_only_call_from_proposal_manager() == false {
+                ink_env::debug_println!("########## OnlyFromProposalManagerAddress Error.");
                 return Err(Error::OnlyFromProposalManagerAddress);
             }
 
-            // ink_env::debug_println!("########## pass add_member #first position");
-
-            let member_info = match self.inline_convert_csv_2_memberinfo(_csv_data) {
+            let member_info = match self.inline_convert_csv_2_memberinfo(_csv_data.clone()) {
                 Some(value) => value,
-                None => return Err(Error::CsvConvertFailure),
+                None => {
+                    ink_env::debug_println!("########## CsvConvertFailure Error. csv_data:{:?}",_csv_data);
+                    return Err(Error::CsvConvertFailure);
+                },
             };
             if self
                 .member_infoes
                 .get(&(_dao_address, member_info.member_address))
                 != None
             {
+                ink_env::debug_println!("########## CsvConvertFailure Error.");
                 return Err(Error::MemberAlreadyExists);
             }
             self.inline_add_member(
@@ -172,10 +181,10 @@ pub mod member_manager {
         #[inline]
         fn inline_delete_member(
             &mut self,
-            _dao_address: AccountId,
-            _member_address: AccountId,
+            dao_address: AccountId,
+            member_address: AccountId,
         ) -> ResultTransaction<()> {
-            let member_info = match self.member_infoes.get(&(_dao_address, _member_address)) {
+            let member_info = match self.member_infoes.get(&(dao_address, member_address)) {
                 Some(value) => value,
                 None => {
                     ink_env::debug_println!("MemberDoesNotExist Error.");
@@ -183,26 +192,30 @@ pub mod member_manager {
                 },
             };
 
-            let list =  self.get_electoral_commissioner_list(_dao_address);
-            if list.len() == 1 && list[0].member_address == _member_address {
+            let list =  self.get_electoral_commissioner_list(dao_address);
+            if list.len() == 1 && list[0].member_address == member_address {
                 ink_env::debug_println!("################ AtLeastOneElectionCommissioner Error.");
                 return Err(Error::AtLeastOneElectionCommissioner);
 
             }
             
-            for i in 0..self.next_commissioner_no {
+            let next_commissioner_no = match self.next_commissioner_nos.get(&dao_address) {
+                Some(value) => value,
+                None => return Err(Error::PossibleBug),
+            };
+            for i in 0..next_commissioner_no {
                 let electoral_commissioner_address: AccountId =
-                    match self.electoral_commissioner.get(&(_dao_address, i)) {
+                    match self.electoral_commissioner.get(&(dao_address, i)) {
                         Some(value) => value,
                         None => continue,
                     };
                 if electoral_commissioner_address == member_info.member_address {
-                    self.electoral_commissioner.remove(&(_dao_address, i));
+                    self.electoral_commissioner.remove(&(dao_address, i));
                 }
             }
             self.member_infoes_from_id
-                .remove(&(_dao_address, member_info.member_id));
-            self.member_infoes.remove(&(_dao_address, _member_address));
+                .remove(&(dao_address, member_info.member_id));
+            self.member_infoes.remove(&(dao_address, member_address));
             Ok(())
         }
 
@@ -234,10 +247,14 @@ pub mod member_manager {
 
         /// get member list.
         #[ink(message)]
-        pub fn get_member_list(&self, _dao_address: AccountId) -> Vec<MemberInfo> {
+        pub fn get_member_list(&self, dao_address: AccountId) -> Vec<MemberInfo> {
             let mut member_list: Vec<MemberInfo> = Vec::new();
-            for i in 0..self.next_member_id {
-                let member_info = match self.member_infoes_from_id.get(&(_dao_address, i)) {
+            let next_member_id = match self.next_memger_ids.get(&dao_address) {
+                Some(value) => value,
+                None => return member_list,
+            };
+            for i in 0..next_member_id {
+                let member_info = match self.member_infoes_from_id.get(&(dao_address, i)) {
                     Some(value) => value,
                     None => continue,
                 };
@@ -248,11 +265,15 @@ pub mod member_manager {
 
         /// get electoral commissioner list
         #[ink(message)]
-        pub fn get_electoral_commissioner_list(&self, _dao_address: AccountId) -> Vec<MemberInfo> {
+        pub fn get_electoral_commissioner_list(&self, dao_address: AccountId) -> Vec<MemberInfo> {
             let mut result:Vec<MemberInfo> = Vec::new(); 
-            for i in 0..self.next_commissioner_no {
-                match self.electoral_commissioner.get(&(_dao_address, i)) {
-                    Some(value) => match self.member_infoes.get(&(_dao_address, value)) {
+            let next_commissioner_no = match self.next_commissioner_nos.get(&dao_address) {
+                Some(value) => value,
+                None => return result,
+            };
+            for i in 0..next_commissioner_no {
+                match self.electoral_commissioner.get(&(dao_address, i)) {
+                    Some(value) => match self.member_infoes.get(&(dao_address, value)) {
                         Some(value) => result.push(value),
                         None => continue,
                     },
@@ -278,7 +299,11 @@ pub mod member_manager {
             &self,
             dao_address: AccountId,
         ) -> bool {
-            for i in 0..self.next_commissioner_no {
+            let next_commissioner_no = match self.next_commissioner_nos.get(&dao_address) {
+                Some(value) => value,
+                None => return false,
+            };
+            for i in 0..next_commissioner_no {
                 match self.electoral_commissioner.get(&(dao_address, i)) {
                     Some(value) => {
                         if value == self.env().caller() {
@@ -305,10 +330,14 @@ pub mod member_manager {
         pub fn modifier_only_electoral_commissioner(
             &self,
             caller: AccountId,
-            _dao_address: AccountId,
+            dao_address: AccountId,
         ) -> bool {
-            for i in 0..self.next_commissioner_no {
-                match self.electoral_commissioner.get(&(_dao_address, i)) {
+            let next_commissioner_no = match self.next_commissioner_nos.get(&dao_address) {
+                Some(value) => value,
+                None => return false,
+            };
+            for i in 0..next_commissioner_no {
+                match self.electoral_commissioner.get(&(dao_address, i)) {
                     Some(value) => {
                         if value == caller {
                             return true;
@@ -324,11 +353,11 @@ pub mod member_manager {
         #[inline]
         fn inline_change_electoral_commissioner(
             &mut self,
-            _dao_address: AccountId,
-            _candidates: Vec<AccountId>,
+            dao_address: AccountId,
+            candidates: Vec<AccountId>,
         ) -> ResultTransaction<()> {
-            for account in _candidates.clone() {
-                match self.member_infoes.get(&(_dao_address, account)) {
+            for account in candidates.clone() {
+                match self.member_infoes.get(&(dao_address, account)) {
                     Some(value) => continue,
                     None => {
                         ink_env::debug_println!("########################### MemberDoesNotExist 1 Error.");        
@@ -336,30 +365,35 @@ pub mod member_manager {
                     },
                 };
             }
-            match self.dismiss_electoral_commissioner(_dao_address) {
+            match self.dismiss_electoral_commissioner(dao_address) {
                 Ok(()) => (),
                 Err(e) => {
                     ink_env::debug_println!("########################### dismiss_electoral_commissioner Error.");        
                     return Err(e)
                 },
             }
-            for account in _candidates.clone() {
-                let mut member_info = match self.member_infoes.get(&(_dao_address, account)) {
+            for account in candidates.clone() {
+                let mut member_info = match self.member_infoes.get(&(dao_address, account)) {
                     Some(value) => value,
                     None => {
                         ink_env::debug_println!("########################### MemberDoesNotExist 2 Error.");      
                         return Err(Error::MemberDoesNotExist)
                     },
                 };
+                let mut next_commissioner_no = match self.next_commissioner_nos.get(&dao_address) {
+                    Some(value) => value,
+                    None => return Err(Error::PossibleBug),
+                };
                 self.electoral_commissioner
-                    .insert(&(_dao_address, self.next_commissioner_no), &account);
-                self.next_commissioner_no = self.next_commissioner_no + 1;
+                    .insert(&(dao_address, next_commissioner_no), &account);
+                next_commissioner_no = next_commissioner_no + 1;
+                self.next_commissioner_nos.insert(&dao_address, &next_commissioner_no);
 
                 member_info.is_electoral_commissioner = true;
                 self.member_infoes
-                    .insert(&(_dao_address, account), &member_info.clone());
+                    .insert(&(dao_address, account), &member_info.clone());
                 self.member_infoes_from_id
-                    .insert(&(_dao_address, member_info.member_id), &member_info.clone());
+                    .insert(&(dao_address, member_info.member_id), &member_info.clone());
             }
             Ok(())
         }
@@ -368,29 +402,33 @@ pub mod member_manager {
         #[inline]
         fn dismiss_electoral_commissioner(
             &mut self,
-            _dao_address: AccountId,
+            dao_address: AccountId,
         ) -> ResultTransaction<()> {
-            for i in 0..self.next_commissioner_no {
-                let member_address = match self.electoral_commissioner.get(&(_dao_address, i)) {
+            let next_commissioner_no = match self.next_commissioner_nos.get(&dao_address) {
+                Some(value) => value,
+                None => return Err(Error::PossibleBug),
+            };
+            for i in 0..next_commissioner_no {
+                let member_address = match self.electoral_commissioner.get(&(dao_address, i)) {
                     Some(value) => value,
                     None => return Err(Error::ElectoralCommissionerDataMismatch),
                 };
-                let mut member_info = match self.member_infoes.get(&(_dao_address, member_address))
+                let mut member_info = match self.member_infoes.get(&(dao_address, member_address))
                 {
                     Some(value) => value,
                     None => return Err(Error::ElectoralCommissionerDataMismatch),
                 };
                 member_info.is_electoral_commissioner = false;
                 self.member_infoes.insert(
-                    &(_dao_address, member_info.member_address),
+                    &(dao_address, member_info.member_address),
                     &member_info.clone(),
                 );
                 self.member_infoes_from_id
-                    .insert(&(_dao_address, member_info.member_id), &member_info.clone());
+                    .insert(&(dao_address, member_info.member_id), &member_info.clone());
 
-                self.electoral_commissioner.remove(&(_dao_address, i));
+                self.electoral_commissioner.remove(&(dao_address, i));
             }
-            self.next_commissioner_no = 0;
+            self.next_commissioner_nos.insert(&dao_address,&0);
             Ok(())
         }
 
@@ -425,30 +463,40 @@ pub mod member_manager {
         #[inline]
         fn inline_add_member(
             &mut self,
-            _dao_address: AccountId,
-            _name: String,
-            _member_address: AccountId,
-            _token_id: u16,
-            _is_electoral_commissioner: bool,
+            dao_address: AccountId,
+            name: String,
+            member_address: AccountId,
+            token_id: u16,
+            is_electoral_commissioner: bool,
         ) {
+            let mut next_member_id = match self.next_memger_ids.get(&dao_address) {
+                Some(value) => value,
+                None => 0,
+            };
             let member_info = MemberInfo {
-                name: _name,
-                member_address: _member_address,
-                member_id: self.next_member_id,
-                token_id: _token_id,
-                is_electoral_commissioner: _is_electoral_commissioner,
+                name: name,
+                member_address: member_address,
+                member_id: next_member_id,
+                token_id: token_id,
+                is_electoral_commissioner: is_electoral_commissioner,
             };
 
             self.member_infoes
-                .insert(&(_dao_address, _member_address), &member_info.clone());
+                .insert(&(dao_address, member_address), &member_info.clone());
             self.member_infoes_from_id
-                .insert(&(_dao_address, self.next_member_id), &member_info.clone());
-            self.next_member_id = self.next_member_id + 1;
+                .insert(&(dao_address, next_member_id), &member_info.clone());
+            next_member_id = next_member_id + 1;
+            self.next_memger_ids.insert(&dao_address, &next_member_id);
 
-            if _is_electoral_commissioner {
+            if is_electoral_commissioner {
+                let mut next_commissioner_no = match self.next_commissioner_nos.get(&dao_address) {
+                    Some(value) => value,
+                    None => 0,
+                };
                 self.electoral_commissioner
-                    .insert(&(_dao_address, self.next_commissioner_no), &_member_address);
-                self.next_commissioner_no = self.next_commissioner_no + 1;
+                    .insert(&(dao_address, next_commissioner_no), &member_address);
+                next_commissioner_no = next_commissioner_no + 1;
+                self.next_commissioner_nos.insert(&dao_address,&next_commissioner_no);
             }
         }
 

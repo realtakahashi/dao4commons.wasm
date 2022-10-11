@@ -37,7 +37,9 @@ const ListOfSubDAO = () => {
     const selectedAccount = await get_account_info(get_selected_address());
     const dao_address_list = await listDAOAddress(selectedAccount.address);
     const list = await listSubDAO(selectedAccount.address,dao_address_list);
+    console.log("## address_list:",list);
     const result = await getDaoListOfAffiliation(selectedAccount.address, list);
+    console.log("## daolist:",result);
     setSubDaoList(result);
   };
 

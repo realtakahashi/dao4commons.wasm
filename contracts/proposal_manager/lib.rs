@@ -53,6 +53,8 @@ pub mod proposal_manager {
         /// Invalid Member Manager Call
         InvalidMemberManagerCall,
         InvalidDaoManagerCall,
+        /// Possible Bug
+        PossibleBug,
     }
 
     pub type Result<T> = core::result::Result<T, Error>;
@@ -130,8 +132,6 @@ pub mod proposal_manager {
         member_manager: MemberManagerRef,
         /// dao_manager reference
         dao_manager: DaoManagerRef,
-        /// proposal_id
-        next_proposal_id: u128,
         /// dao_address => count of tenure
         count_of_tenure: Mapping<AccountId, u16>,
         /// ( dao address, proposal_id) => proposal info
@@ -140,6 +140,8 @@ pub mod proposal_manager {
         voting_results: Mapping<(AccountId, u128), VotingResult>,
         /// ( dao address, proposal_id) => eoa address
         voted_people: Mapping<(AccountId, u128), Vec<AccountId>>,
+        /// dao address => u128
+        next_proposal_ids:Mapping<AccountId, u128>,
     }
 
     impl ProposalManager {
@@ -152,11 +154,11 @@ pub mod proposal_manager {
             Self {
                 member_manager: _member_manager,
                 dao_manager : dao_manager,
-                next_proposal_id: 0,
                 count_of_tenure: Mapping::default(),
                 proposal_infoes: Mapping::default(),
                 voting_results: Mapping::default(),
                 voted_people: Mapping::default(),
+                next_proposal_ids: Mapping::default(), 
             }
         }
 
@@ -194,9 +196,14 @@ pub mod proposal_manager {
                 },
             };
 
+            let mut next_proposal_id = match self.next_proposal_ids.get(&dao_address) {
+                Some(value) => value,
+                None => 0,
+            };
+
             let proposal_info = ProposalInfo {
                 proposal_type: proposal_type,
-                proposal_id: self.next_proposal_id,
+                proposal_id: next_proposal_id,
                 title: title,
                 outline: outline,
                 details: details,
@@ -206,17 +213,23 @@ pub mod proposal_manager {
                 csv_data: csv_data,
             };
             self.proposal_infoes
-                .insert(&(dao_address, self.next_proposal_id), &proposal_info);
-            self.next_proposal_id = self.next_proposal_id + 1;
+                .insert(&(dao_address, next_proposal_id), &proposal_info);
+            next_proposal_id = next_proposal_id + 1;
+            self.next_proposal_ids.insert(&dao_address, &next_proposal_id);
             Ok(())
         }
 
         /// get proposal list.
         #[ink(message)]
-        pub fn get_proposal_list(&self, _dao_address: AccountId) -> Vec<ProposalInfo> {
+        pub fn get_proposal_list(&self, dao_address: AccountId) -> Vec<ProposalInfo> {
+            let next_proposal_id = match self.next_proposal_ids.get(&dao_address) {
+                Some(value) => value,
+                None => 0,
+            };
+
             let mut proposal_list: Vec<ProposalInfo> = Vec::new();
-            for i in 0..self.next_proposal_id {
-                let proposal_info = match self.proposal_infoes.get(&(_dao_address, i)) {
+            for i in 0..next_proposal_id {
+                let proposal_info = match self.proposal_infoes.get(&(dao_address, i)) {
                     Some(value) => value,
                     None => continue,
                 };
@@ -362,6 +375,7 @@ pub mod proposal_manager {
                 .modifier_only_member(caller, _dao_address)
                 == false
             {
+                ink_env::debug_println!("########################### OnlyMemberDoes Error.");
                 return Err(Error::OnlyMemberDoes);
             }
 
@@ -369,11 +383,15 @@ pub mod proposal_manager {
                 match self.proposal_infoes.get(&(_dao_address, _proposal_id)) {
                     Some(value) => {
                         if value.status != ProposalStatus::Running {
+                            ink_env::debug_println!("########################### NotRunning Error.");
                             return Err(Error::NotRunning);
                         }
                         value
                     }
-                    None => return Err(Error::ProposalDoesNotExist),
+                    None => {
+                        ink_env::debug_println!("########################### ProposalDoesNotExist Error.");
+                        return Err(Error::ProposalDoesNotExist);
+                    },
                 };
 
             match proposal_info.proposal_type {
@@ -432,7 +450,10 @@ pub mod proposal_manager {
                         Err(e) => return Err(Error::InvalidDaoManagerCall),
                     }
                 },
-                _ => return Err(Error::NotImplemented),
+                _ => {
+                    ink_env::debug_println!("########################### NotImplemented Error.");
+                    return Err(Error::NotImplemented);
+                },
             };
             proposal_info.status = ProposalStatus::Finished;
             self.inline_change_proposal_status(_dao_address, proposal_info.clone());
