@@ -97,7 +97,7 @@ pub mod proposal_manager {
 
     pub const MAJORITY_PERCENTAGE_DEFINITION: u16 = 50;
     pub const REQUIRED_VOTER_TURNOUT_PERCENTAGE_DEFINITION: u16 = 80;
-    pub const TENURE_OF_LIMIT: u16 = 3;
+    pub const TENURE_OF_LIMIT: u16 = 5;
 
     // #[derive(
     //     Default, Debug, Clone, scale::Encode, scale::Decode, SpreadLayout, PackedLayout, PartialEq,
@@ -460,6 +460,19 @@ pub mod proposal_manager {
             Ok(())
         }
 
+        /// check tenure count
+        #[ink(message)]
+        pub fn is_limit_tenure_count_of_electoral_commissioner(&self, _dao_address: AccountId) -> bool {
+            match self.count_of_tenure.get(&_dao_address) {
+                Some(value) => {
+                    ink_env::debug_println!("########################### count_of_tenure : {:?}", value);
+                    ink_env::debug_println!("########################### TENURE_OF_LIMIT : {:?}", TENURE_OF_LIMIT);
+                    return value >= TENURE_OF_LIMIT;
+                },
+                None => return false,
+            };
+        }
+
         /// add tenure count
         #[inline]
         fn add_tenure_count(&mut self, _dao_address: AccountId) {
@@ -484,19 +497,6 @@ pub mod proposal_manager {
                 }
                 None => (),
             }
-        }
-
-        /// check tenure count
-        #[inline]
-        fn is_limit_tenure_count_of_electoral_commissioner(&self, _dao_address: AccountId) -> bool {
-            match self.count_of_tenure.get(&_dao_address) {
-                Some(value) => {
-                    ink_env::debug_println!("########################### count_of_tenure : {:?}", value);
-                    ink_env::debug_println!("########################### TENURE_OF_LIMIT : {:?}", TENURE_OF_LIMIT);
-                    return value >= TENURE_OF_LIMIT;
-                },
-                None => return false,
-            };
         }
 
         /// count voting result.

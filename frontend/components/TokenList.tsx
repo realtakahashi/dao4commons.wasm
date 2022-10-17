@@ -1,13 +1,13 @@
-import { getSalesStatus } from "@/dao4.frontend.common/contracts/DaoErc20_api";
+import { get_selected_address } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
 import {
   getTokenList,
   getTokenListWithName,
-} from "@/dao4.frontend.common/contracts/subdao_api";
+} from "@/dao4.frontend.common.wasm/contracts/subdao_api";
 import {
   TokenInfo,
   TokenInfoWithName,
   TokenKind,
-} from "@/dao4.frontend.common/types/Token";
+} from "@/dao4.frontend.common.wasm/types/Token";
 import { useEffect, useState } from "react";
 import TokenDetail from "./TokenDetail";
 
@@ -41,15 +41,16 @@ const TokenList = (props: TokenListParameter) => {
   };
 
   const _getTokenList = async () => {
-    const list = await getTokenList(props.daoAddress);
-    setTokenList(await getTokenListWithName(list));
+    const selecttedAddress = get_selected_address();
+    const list = await getTokenList(selecttedAddress,props.daoAddress);
+    setTokenList(await getTokenListWithName(selecttedAddress,list));
   };
 
   const _getTokenKindString = (tokenKind: TokenKind): string => {
     if (tokenKind == TokenKind.ERC20) {
-      return "ERC20";
+      return "PSP22";
     } else if (tokenKind == TokenKind.ERC721){
-      return "ERC721";
+      return "PSP34";
     } else{
       return "Governance"
     }

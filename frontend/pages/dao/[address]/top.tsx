@@ -6,7 +6,7 @@ import { getDaoName } from "dao4.frontend.common.wasm/contracts/subdao_api";
 import Member from "@/dao4.frontend.common.wasm/components/Member";
 import Proposal from "@/dao4.frontend.common.wasm/components/Proposal";
 import Donate from "@/dao4.frontend.common.wasm/components/Donate";
-import { TargetDaoKind } from "@/dao4.frontend.common.wasm/types/MasterDaoType";
+import { TargetDaoKind } from "@/dao4.frontend.common.wasm/types/SubDaoType";
 import Divide from "@/dao4.frontend.common.wasm/components/Divide";
 import { get_account_info, get_selected_address } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
 
@@ -88,12 +88,12 @@ const DaoTop = () => {
         {showProposal == true &&(
           <Proposal daoAddress={subDAOaddress}></Proposal>
         )}
-        {/* {showDonate == true && (
+        {showDonate == true && (
           <Donate daoAddress={subDAOaddress} daoName={daoName} targetDaoKind={TargetDaoKind.TARGET_DAO_FROM_INDIVIDIALS}></Donate>
         )}
         {showDivide == true && (
           <Divide  daoAddress={subDAOaddress} daoName={daoName} targetDaoKind={TargetDaoKind.NONE}></Divide>
-        )} */}
+        )}
       </div>
     </>
   );

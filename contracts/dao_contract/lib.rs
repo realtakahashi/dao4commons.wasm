@@ -103,7 +103,7 @@ pub mod dao_contract {
             token_type: TokenType,
             token_address: AccountId,
         ) -> Result<()> {
-            if !self._is_calling_from_proposal_manager() {
+            if !self._is_calling_from_dao_manager() {
                 return Err(Error::ThisFunctionCanBeCalledFromDaoManager);
             }
 
@@ -134,7 +134,7 @@ pub mod dao_contract {
 
         #[ink(message)]
         pub fn change_token_sales_status(&mut self, token_address:AccountId, is_start:bool) -> Result<()> {
-            if !self._is_calling_from_proposal_manager() {
+            if !self._is_calling_from_dao_manager() {
                 return Err(Error::ThisFunctionCanBeCalledFromDaoManager);
             }
 
@@ -167,7 +167,7 @@ pub mod dao_contract {
 
         #[ink(message)]
         pub fn withdraw_token_proceeds(&mut self, token_address:AccountId) -> Result<()> {
-            if !self._is_calling_from_proposal_manager() {
+            if !self._is_calling_from_dao_manager() {
                 return Err(Error::ThisFunctionCanBeCalledFromDaoManager);
             }
 
@@ -200,7 +200,7 @@ pub mod dao_contract {
 
         #[ink(message)]
         pub fn distribute_governance_token(&mut self, token_address: AccountId, csv_data:String) -> Result<()> {
-            if !self._is_calling_from_proposal_manager() {
+            if !self._is_calling_from_dao_manager() {
                 return Err(Error::ThisFunctionCanBeCalledFromDaoManager);
             }
 
@@ -237,7 +237,7 @@ pub mod dao_contract {
 
         #[ink(message)]
         pub fn distribute_dao_treasury(&mut self, to:AccountId, amount:Balance) -> Result<()> {
-            if !self._is_calling_from_proposal_manager() {
+            if !self._is_calling_from_dao_manager() {
                 return Err(Error::ThisFunctionCanBeCalledFromDaoManager);
             }
 
@@ -253,7 +253,7 @@ pub mod dao_contract {
         }
 
         #[inline]
-        fn _is_calling_from_proposal_manager(&self) -> bool {
+        fn _is_calling_from_dao_manager(&self) -> bool {
             self.env().caller() == self.dao_manager_account_id
         }
 

@@ -1,4 +1,4 @@
-import { TokenInfoWithName, TokenKind } from "@/dao4.frontend.common/types/Token";
+import { TokenInfoWithName, TokenKind } from "@/dao4.frontend.common.wasm/types/Token";
 import Erc20Detail from "./Erc20Detail";
 import Erc20ForSale from "./Erc20ForSale";
 import Erc721Detail from "./Erc721Detail";
@@ -9,6 +9,7 @@ import GovernanceTokenDetail from "./GovernanceTokenDetail";
 interface TokenDetailParameter {
   _selectToken: TokenInfoWithName;
   _forMember: boolean;
+  daoAddress: string;
   _showSettingAndSelectToken:(_showList:boolean,_showDetail:boolean,_selectToken:TokenInfoWithName)=>void;
 }
 
