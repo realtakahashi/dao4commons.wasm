@@ -104,6 +104,7 @@ const TokenList = (props: TokenListParameter) => {
         <TokenDetail
           _selectToken={selectToken}
           _forMember={props.forMember}
+          daoAddress={props.daoAddress}
           _showSettingAndSelectToken={showSettingAndSelectToken}
         ></TokenDetail>
       )}

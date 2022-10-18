@@ -19,6 +19,7 @@ pub mod dao_psp22 {
         dao_address: AccountId,
         is_token_sales_started: bool,
         sales_price_for_one_token: u128,
+        sales_amount: u128,
     }
 
     impl PSP22 for DaoPsp22 {}
@@ -44,6 +45,7 @@ pub mod dao_psp22 {
                 instance.dao_address = dao_address;
                 instance.is_token_sales_started = false;
                 instance.sales_price_for_one_token = sales_price_for_one_token;
+                instance.sales_amount = 0;
             })
         }
 
@@ -74,7 +76,10 @@ pub mod dao_psp22 {
                 amount,
                 "transfer_data".as_bytes().to_vec(),
             ) {
-                Ok(()) => Ok(()),
+                Ok(()) => {
+                    self.sales_amount = self.sales_amount + amount;
+                    Ok(())
+                },
                 Err(e) => {
                     ink_env::debug_println!("     ########## transfer error : {:?}", e);
                     Err(PSP22Error::Custom("Transfering is failure.".to_string()))
@@ -124,6 +129,11 @@ pub mod dao_psp22 {
         #[ink(message)]
         pub fn get_token_sales_status(&self) -> bool {
             self.is_token_sales_started
+        }
+
+        #[ink(message)]
+        pub fn get_sales_amount(&self) -> u128 {
+            self.sales_amount
         }
 
         #[inline]

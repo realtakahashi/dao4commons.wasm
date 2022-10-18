@@ -12,6 +12,13 @@ pub mod dao_psp34 {
     use ink_storage::traits::SpreadAllocate;
     use openbrush::{contracts::psp34::extensions::metadata::*, traits::Storage};
 
+    /// Event of minting a token.
+    #[ink(event)]
+    pub struct TokenIsMinted {
+        owner: Option<AccountId>,
+        token_id: Id,
+    }
+
     #[derive(SpreadAllocate, Storage)]
     #[ink(storage)]
     pub struct DaoPsp34 {
@@ -24,6 +31,7 @@ pub mod dao_psp34 {
         dao_address: AccountId,
         proposal_manager_address: AccountId,
         is_token_sales_started: bool,
+        next_token_id: u128,
     }
 
     impl PSP34 for DaoPsp34 {}
@@ -54,21 +62,28 @@ pub mod dao_psp34 {
                 instance.dao_address = dao_address;
                 instance.proposal_manager_address = proposal_manager_address;
                 instance.is_token_sales_started = false;
+                instance.next_token_id = 0;
             })
         }
 
         #[ink(message)]
         #[ink(payable)]
-        pub fn mint_for_buy(&mut self, account: AccountId, id: Id) -> Result<(), PSP34Error> {
-            if self.is_token_sales_started == false {
-                return Err(PSP34Error::Custom("Token sales is not opened.".to_string()));
-            }
+        pub fn mint_for_buy(&mut self, account: AccountId) -> Result<(), PSP34Error> {
+            // if self.is_token_sales_started == false {
+            //     return Err(PSP34Error::Custom("Token sales is not opened.".to_string()));
+            // }
             let transfered_value = self.env().transferred_value();
             ink_env::debug_println!("     ########## tranfered_value: {:?}", transfered_value);
             if transfered_value < self.sales_price {
                 return Err(PSP34Error::Custom("You don't pay enough.".to_string()));
             }
-            self._mint_to(account, id)
+            let ret = self._mint_to(account, Id::U128(self.next_token_id));
+            self.env().emit_event(TokenIsMinted{
+                owner: Some(account),
+                token_id: Id::U128(self.next_token_id),
+            });
+            self.next_token_id = self.next_token_id + 1;
+            ret
         }
 
         #[ink(message)]

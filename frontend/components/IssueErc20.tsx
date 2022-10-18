@@ -1,9 +1,9 @@
 import {
   deployDaoErc20,
   mint,
-} from "@/dao4.frontend.common/contracts/DaoErc20_api";
-import { addTokenToList } from "@/dao4.frontend.common/contracts/subdao_api";
-import { Erc20DeployData, MintInfo, TokenKind } from "@/dao4.frontend.common/types/Token";
+} from "@/dao4.frontend.common.wasm/contracts/DaoErc20_api";
+import { addTokenToList } from "@/dao4.frontend.common.wasm/contracts/subdao_api";
+import { Erc20DeployData, MintInfo, TokenKind } from "@/dao4.frontend.common.wasm/types/Token";
 import { useState } from "react";
 
 interface IssueErc20Parameter {

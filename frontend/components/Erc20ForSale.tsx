@@ -1,18 +1,17 @@
 import {
     buy,
-    controlTokenSale,
     getMintedAmount,
     getPrice,
     getSalesAmount,
     getSalesStatus,
-    mint,
-  } from "@/dao4.frontend.common/contracts/DaoErc20_api";
+  } from "@/dao4.frontend.common.wasm/contracts/DaoErc20_api";
   import {
-    MintInfo,
     TokenInfoWithName,
-  } from "@/dao4.frontend.common/types/Token";
+  } from "@/dao4.frontend.common.wasm/types/Token";
   import { useEffect, useState } from "react";
   import { ethers } from "ethers";
+import { get_account_info, get_selected_address } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
+import type { InjectedAccountWithMeta } from "@polkadot/extension-inject/types";
   
   interface Erc20ForSaleParameter {
     selectToken: TokenInfoWithName;
@@ -24,15 +23,20 @@ import {
     const [salesAmount, setSalesAmount] = useState("");
     const [buyAmount, setBuyAmount] = useState("");
     const [price, setPrice] = useState("");
+    const [selectedAccount, setSelectedAccount] = useState<InjectedAccountWithMeta>({address:"",meta:{genesisHash:"",name:"",source:""}})
     
+    const getAccountInfo = async () => {
+      setSelectedAccount(await get_account_info(get_selected_address()));
+    }
+
     const _onSubmitBuy = async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       console.log("## buy amount:",buyAmount)
-      await buy(props.selectToken.tokenAddress,Number(buyAmount));
+      await buy(selectedAccount,props.selectToken.tokenAddress,Number(buyAmount));
     };
     
     const _getSalesStatus = async () => {
-      const ret = await getSalesStatus(props.selectToken.tokenAddress);
+      const ret = await getSalesStatus(selectedAccount.address,props.selectToken.tokenAddress);
       if (ret == true) {
       setSaleStatus("On Sale");
       }
@@ -42,22 +46,23 @@ import {
     };
   
     const _getSalesAmount = async () => {
-      const ret = await getSalesAmount(props.selectToken.tokenAddress);
+      const ret = await getSalesAmount(selectedAccount.address,props.selectToken.tokenAddress);
       setSalesAmount(ethers.utils.formatEther(ret));
       
     };
 
     const _getMintedAmount = async () => {
-        setMintedAmount(await getMintedAmount(props.selectToken.tokenAddress));
+        setMintedAmount(await getMintedAmount(selectedAccount.address,props.selectToken.tokenAddress));
       };
     
     const _getPrice = async () => {
-      const ret = await getPrice(props.selectToken.tokenAddress);
+      const ret = await getPrice(selectedAccount.address,props.selectToken.tokenAddress);
       setPrice(ret);
     };
   
     useEffect(() => {
-        _getMintedAmount();
+      getAccountInfo();
+      _getMintedAmount();
       _getSalesStatus();
       _getSalesAmount();
       _getPrice();
@@ -112,7 +117,7 @@ import {
                         name="amount"
                         type="text"
                         onChange={(e) => setBuyAmount(e.target.value)}
-                      ></input> <span className="text-white text-18px"> * decimal(18)</span>
+                      ></input> <span className="text-white text-18px"></span>
                     </td>
                   </tr>
                 </table>

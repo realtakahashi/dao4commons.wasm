@@ -183,8 +183,8 @@ pub mod dao_manager {
             if data.len() != 2 {
                 return Err(Error::InvalidCsvData);
             }
-            let token_account_id = self._convert_string_to_accountid(data[1]);
-            let list_of_reciver:String = data[2].to_string();
+            let token_account_id = self._convert_string_to_accountid(data[0]);
+            let list_of_reciver:String = data[1].to_string();
 
             let mut instance: DaoContractRef = ink_env::call::FromAccountId::from_account_id(dao_account_id);
             match instance.distribute_governance_token(token_account_id, list_of_reciver) {
