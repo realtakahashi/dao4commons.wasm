@@ -29,7 +29,6 @@ pub mod dao_psp34 {
         initial_id: Id,
         sales_price: u128,
         dao_address: AccountId,
-        proposal_manager_address: AccountId,
         is_token_sales_started: bool,
         next_token_id: u128,
     }
@@ -48,7 +47,6 @@ pub mod dao_psp34 {
             base_uri: String,
             sales_price: u128,
             dao_address: AccountId,
-            proposal_manager_address: AccountId,
         ) -> Self {
             ink_lang::codegen::initialize_contract(|instance: &mut Self| {
                 let name_key: Vec<u8> = "name".as_bytes().to_vec();
@@ -60,7 +58,6 @@ pub mod dao_psp34 {
                 instance.initial_id = id;
                 instance.sales_price = sales_price;
                 instance.dao_address = dao_address;
-                instance.proposal_manager_address = proposal_manager_address;
                 instance.is_token_sales_started = false;
                 instance.next_token_id = 0;
             })

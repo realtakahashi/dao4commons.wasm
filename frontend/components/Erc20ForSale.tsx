@@ -23,7 +23,7 @@ import type { InjectedAccountWithMeta } from "@polkadot/extension-inject/types";
     const [salesAmount, setSalesAmount] = useState("");
     const [buyAmount, setBuyAmount] = useState("");
     const [price, setPrice] = useState("");
-    const [selectedAccount, setSelectedAccount] = useState<InjectedAccountWithMeta>({address:"",meta:{genesisHash:"",name:"",source:""}})
+    const [selectedAccount, setSelectedAccount] = useState<InjectedAccountWithMeta>({address:"",meta:{genesisHash:"",name:"",source:""}});
     
     const getAccountInfo = async () => {
       setSelectedAccount(await get_account_info(get_selected_address()));
