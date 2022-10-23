@@ -209,8 +209,8 @@ pub mod dao_manager {
             if data.len() != 2 {
                 return Err(Error::InvalidCsvData);
             }
-            let to = self._convert_string_to_accountid(data[1]);
-            let amount:u128 = data[2].parse().unwrap();
+            let to = self._convert_string_to_accountid(data[0]);
+            let amount:u128 = data[1].parse().unwrap();
 
             let mut instance: DaoContractRef = ink_env::call::FromAccountId::from_account_id(dao_account_id);
             match instance.distribute_dao_treasury(to, amount) {
