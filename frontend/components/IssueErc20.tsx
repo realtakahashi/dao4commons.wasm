@@ -75,7 +75,9 @@ const IssueErc20 = (props: IssueErc20Parameter) => {
     });
   };
 
-  const registerToDao = async () => {
+  const registerToDao = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    console.log("## register TokenKind:",Number(TokenKind.ERC20))
     await createProposal4AddingTokenToList(
       Number(TokenKind.ERC20),
       tokenAddress,
@@ -93,7 +95,7 @@ const IssueErc20 = (props: IssueErc20Parameter) => {
     <>
       <div className="bg-black min-h-screen">
         <div className="flex justify-center text-orange-400 p-5 text-25px">
-          Deploy Erc20 Token
+          Deploy PSP22 Token
         </div>
         <div className="flex justify-center text-white">
           <form className="" onSubmit={_onSubmit}>
@@ -180,9 +182,11 @@ const IssueErc20 = (props: IssueErc20Parameter) => {
                 Create A Proposal Which Register The Token
               </div>
             </div>
+            </div>
             <div className="m-5 flex justify-center text-24px text-blue-200">
               <label>Proposal Information</label>
             </div>
+            {/* <div className="flex justify-center"> */}
             <div className="p-2 m-5 flex flex-col">
               <table>
                 <tr>
@@ -243,11 +247,11 @@ const IssueErc20 = (props: IssueErc20Parameter) => {
                 </tr>
               </table>
             </div>
-          </div>
+          {/* </div> */}
           <div className="flex justify-center p-5">
             <button
               className="px-4 py-2 border-double border-white border-2 bg-black rounded text-20px text-orange-400  hover:bg-orange-200"
-              onClick={registerToDao}
+              onClick={() => registerToDao}
             >
               Create A Proposal
             </button>

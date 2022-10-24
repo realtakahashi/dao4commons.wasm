@@ -103,8 +103,8 @@ pub mod dao_manager {
             if data.len() != 2 {
                 return Err(Error::InvalidCsvData);
             }
-            let token_account_id = self._convert_string_to_accountid(data[1]);
-            let token_type = match self._convert_str_2_token_type(data[2]) {
+            let token_account_id = self._convert_string_to_accountid(data[0]);
+            let token_type = match self._convert_str_2_token_type(data[1]) {
                 Some(value) => value,
                 None => return Err(Error::InvalidCsvData),
             };
@@ -132,8 +132,8 @@ pub mod dao_manager {
             if data.len() != 2 {
                 return Err(Error::InvalidCsvData);
             }
-            let token_account_id = self._convert_string_to_accountid(data[1]);
-            let isStart:bool = self._conver_str_2_bool(data[2]);
+            let token_account_id = self._convert_string_to_accountid(data[0]);
+            let isStart:bool = self._conver_str_2_bool(data[1]);
 
             let mut instance: DaoContractRef = ink_env::call::FromAccountId::from_account_id(dao_account_id);
             match instance.change_token_sales_status(token_account_id, isStart) {
@@ -158,7 +158,7 @@ pub mod dao_manager {
             if data.len() != 1 {
                 return Err(Error::InvalidCsvData);
             }
-            let token_account_id = self._convert_string_to_accountid(data[1]);
+            let token_account_id = self._convert_string_to_accountid(data[0]);
 
             let mut instance: DaoContractRef = ink_env::call::FromAccountId::from_account_id(dao_account_id);
             match instance.withdraw_token_proceeds(token_account_id) {
@@ -248,9 +248,9 @@ pub mod dao_manager {
         fn _convert_str_2_token_type(&self, type_str:&str) -> Option<TokenType> {
             let convert_type:u8= type_str.parse().unwrap();
             match convert_type {
-                0 => Some(TokenType::GovernanceToken),
-                1 => Some(TokenType::Psp22),
-                3 => Some(TokenType::Psp34),
+                2 => Some(TokenType::GovernanceToken),
+                0 => Some(TokenType::Psp22),
+                1 => Some(TokenType::Psp34),
                 _ => None,
             }
         }

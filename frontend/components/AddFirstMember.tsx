@@ -1,7 +1,6 @@
 import { addFirstMember } from "../dao4.frontend.common.wasm/contracts/membermanager_api";
 import { useState } from "react";
 import { FirstMemberData } from "../dao4.frontend.common.wasm/types/MemberManagerType";
-import { useAccountContext } from "@/hooks/account_context";
 import { get_account_info, get_selected_address } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
 
 interface FirstMemberParameter {

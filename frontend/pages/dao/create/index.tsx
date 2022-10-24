@@ -1,19 +1,10 @@
 import { SubDAODeployFormData } from "../../../dao4.frontend.common.wasm/types/SubDaoType";
 import AddFirstMmeber from "@/components/AddFirstMember";
 import DeployDAO from "@/components/DeployDAO";
-import DeployNFT from "@/components/DeployNFT";
-import MintNFT from "@/components/MintNFT";
 import RegisterToDaoManager from "@/components/RegisterToDaoManager";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
-import { useRouter } from "next/router";
-import type { InjectedAccountWithMeta } from "@polkadot/extension-inject/types";
-import { AccountProvider } from "@/hooks/account_context";
-import {
-  get_account_info,
-  get_selected_address,
-} from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
 
 const CreateDAO = () => {
   const [showDeployDao, setShowDeployDao] = useState(false);

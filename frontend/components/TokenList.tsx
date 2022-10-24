@@ -27,6 +27,7 @@ const TokenList = (props: TokenListParameter) => {
     tokenSymbol: "",
     tokenAddress: "",
     tokenKind: 0,
+    decimal:"",
   });
 
   const showSettingAndSelectToken = (
@@ -47,6 +48,7 @@ const TokenList = (props: TokenListParameter) => {
   };
 
   const _getTokenKindString = (tokenKind: TokenKind): string => {
+    console.log("### tokenKind:",tokenKind)
     if (tokenKind == TokenKind.ERC20) {
       return "PSP22";
     } else if (tokenKind == TokenKind.ERC721){

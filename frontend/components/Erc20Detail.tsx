@@ -14,17 +14,14 @@ const Erc20Detail = (props: Erc20DetailParameter) => {
   const [withdraw, setWithdraw] = useState(false);
 
   const showChangeStatus = () => {
+    console.log("### showChangeStatus:",!changeStatus);
     setChangeStatus(!changeStatus);
-    if (changeStatus == true) {
       setWithdraw(false);
-    }
   };
 
   const showWithdraw = () => {
     setWithdraw(!withdraw);
-    if (withdraw == true) {
       setChangeStatus(false);
-    }
   };
 
   return (
@@ -38,24 +35,24 @@ const Erc20Detail = (props: Erc20DetailParameter) => {
         <div className="p-5"></div>
         <div className="flex justify-center">
           <button
-            className="px-4 py-2 border-double border-white border-2 bg-black rounded text-20px text-orange-400  hover:bg-orange-200"
-            onClick={() => showChangeStatus}
+            className="p-5 m-5 px-4 py-2 border-double border-white border-2 bg-black rounded text-20px text-orange-400  hover:bg-orange-200"
+            onClick={() => showChangeStatus()}
           >
             Change Status
           </button>
-        </div>
-        <div className="flex justify-center">
           <button
-            className="px-4 py-2 border-double border-white border-2 bg-black rounded text-20px text-orange-400  hover:bg-orange-200"
-            onClick={() => showWithdraw}
+            className="p-5 m-5 px-4 py-2 border-double border-white border-2 bg-black rounded text-20px text-orange-400  hover:bg-orange-200"
+            onClick={() => showWithdraw()}
           >
             Withdraw
           </button>
         </div>
+        <div className="p-5"></div>
         <Erc20Info
           selectToken={props.selectToken}
           daoAddress={props.daoAddress}
         ></Erc20Info>
+        <div className="p-8"></div>
         {
           changeStatus == true && (
             <ChangeStatus

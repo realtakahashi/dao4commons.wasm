@@ -1,21 +1,28 @@
 import { deployDaoErc721 } from "@/dao4.frontend.common.wasm/contracts/DaoErc721_api";
 import { createProposal4AddingTokenToList } from "@/dao4.frontend.common.wasm/contracts/subdao_api";
-import { Erc721DeployData, ProposalData4RegisterToken, TokenKind } from "@/dao4.frontend.common.wasm/types/Token";
-import { useState,useEffect } from "react";
+import {
+  Erc721DeployData,
+  ProposalData4RegisterToken,
+  TokenKind,
+} from "@/dao4.frontend.common.wasm/types/Token";
+import { useState, useEffect } from "react";
 import type { InjectedAccountWithMeta } from "@polkadot/extension-inject/types";
-import { get_account_info, get_selected_address } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
+import {
+  get_account_info,
+  get_selected_address,
+} from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
 
 interface IssueErc721Parameter {
   daoAddress: string;
 }
 
 const IssueErc721 = (props: IssueErc721Parameter) => {
-  const [tokenAddress,setTokenAddress] = useState("");
+  const [tokenAddress, setTokenAddress] = useState("");
   const [selectedAccount, setSelectedAccount] =
-  useState<InjectedAccountWithMeta>({
-    address: "",
-    meta: { genesisHash: "", name: "", source: "" },
-  });
+    useState<InjectedAccountWithMeta>({
+      address: "",
+      meta: { genesisHash: "", name: "", source: "" },
+    });
   const [deployData, setDeployData] = useState<Erc721DeployData>({
     tokenName: "",
     tokenSymbol: "",
@@ -23,7 +30,7 @@ const IssueErc721 = (props: IssueErc721Parameter) => {
     price: 0,
     baseUri: "",
   });
-  
+
   const [proposalValue, setProposalValue] =
     useState<ProposalData4RegisterToken>({
       proposalKind: 4,
@@ -65,10 +72,11 @@ const IssueErc721 = (props: IssueErc721Parameter) => {
   const _onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     deployData.daoAddress = props.daoAddress;
-    await deployDaoErc721(selectedAccount,deployData,setTokenAddress);
+    await deployDaoErc721(selectedAccount, deployData, setTokenAddress);
   };
 
-  const registerToDao = async () => {
+  const registerToDao = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    event.preventDefault();
     await createProposal4AddingTokenToList(
       Number(TokenKind.ERC721),
       tokenAddress,
@@ -76,7 +84,7 @@ const IssueErc721 = (props: IssueErc721Parameter) => {
       props.daoAddress,
       proposalValue
     );
-  }
+  };
 
   useEffect(() => {
     getSelectedAccount();
@@ -86,80 +94,91 @@ const IssueErc721 = (props: IssueErc721Parameter) => {
     <>
       <div className="bg-black flex flex-col min-h-screen">
         <div className="flex flex-col justify-center m-5 leading-none tracking-tight">
-          <div className="text-orange-400 text-30px text-center">Deploy Erc721 Token</div>
+          <div className="text-orange-400 text-30px text-center">
+            Deploy PSP34 Token
+          </div>
           <div className="p-2"></div>
           <div className="flex justify-center">
-          <form className="" onSubmit={_onSubmit}>
-            <table>
-              <tr>
-                <th className="text-white text-20px flex justify-start px-2 py-3">Name :</th>
-                <td className="px-2 py-3">
-                  <input
-                    className="appearance-none rounded w-2/3 py-2 px-4 text-gray-700 
+            <form className="" onSubmit={_onSubmit}>
+              <table>
+                <tr>
+                  <th className="text-white text-20px flex justify-start px-2 py-3">
+                    Name :
+                  </th>
+                  <td className="px-2 py-3">
+                    <input
+                      className="appearance-none rounded w-2/3 py-2 px-4 text-gray-700 
                           leading-tight focus:outline-none focus:bg-white focus:border-blue-500"
-                    name="tokenName"
-                    type="text"
-                    onChange={onChangeInput}
-                  ></input>
-                </td>
-              </tr>
-              <tr>
-                <th className="text-white text-20px flex justify-start px-2 py-3">Symbol :</th>
-                <td className="px-2 py-3">
-                  <input
-                    className="appearance-none rounded w-2/3 py-2 px-4 text-gray-700 
+                      name="tokenName"
+                      type="text"
+                      onChange={onChangeInput}
+                    ></input>
+                  </td>
+                </tr>
+                <tr>
+                  <th className="text-white text-20px flex justify-start px-2 py-3">
+                    Symbol :
+                  </th>
+                  <td className="px-2 py-3">
+                    <input
+                      className="appearance-none rounded w-2/3 py-2 px-4 text-gray-700 
                           leading-tight focus:outline-none focus:bg-white focus:border-blue-500"
-                    name="tokenSymbol"
-                    type="text"
-                    onChange={onChangeInput}
-                  ></input>
-                </td>
-              </tr>
-              <tr>
-                <th className="text-white text-20px flex justify-start px-2 py-3">Price :</th>
-                <td className="px-2 py-3">
-                  <input
-                    className="appearance-none rounded w-2/3 py-2 px-4 text-gray-700 
+                      name="tokenSymbol"
+                      type="text"
+                      onChange={onChangeInput}
+                    ></input>
+                  </td>
+                </tr>
+                <tr>
+                  <th className="text-white text-20px flex justify-start px-2 py-3">
+                    Price :
+                  </th>
+                  <td className="px-2 py-3">
+                    <input
+                      className="appearance-none rounded w-2/3 py-2 px-4 text-gray-700 
                           leading-tight focus:outline-none focus:bg-white focus:border-blue-500"
-                    name="price"
-                    type="text"
-                    onChange={onChangeInput}
-                  ></input>
-                </td>
-              </tr>
-              <tr>
-                <th className="text-white text-20px flex justify-start px-2 py-3">Base Uri : </th>
-                <td className=" px-2 py-3">
-                  <input
-                    className="appearance-none rounded w-2/3 py-2 px-4 text-gray-700 
+                      name="price"
+                      type="text"
+                      onChange={onChangeInput}
+                    ></input>
+                  </td>
+                </tr>
+                <tr>
+                  <th className="text-white text-20px flex justify-start px-2 py-3">
+                    Base Uri :{" "}
+                  </th>
+                  <td className=" px-2 py-3">
+                    <input
+                      className="appearance-none rounded w-2/3 py-2 px-4 text-gray-700 
                           leading-tight focus:outline-none focus:bg-white focus:border-blue-500"
-                    name="baseUri"
-                    type="text"
-                    onChange={onChangeInput}
-                  ></input>
-                </td>
-              </tr>
-            </table>
-            <div className="flex justify-center p-4">
-            <button
-              className="px-5 py-3 border-double border-white border-2 bg-black rounded text-20px text-orange-400  hover:bg-orange-200"
-              onClick={() => _onSubmit}
-            >
-              Issue Token
-            </button>
-            </div>
-          </form>
+                      name="baseUri"
+                      type="text"
+                      onChange={onChangeInput}
+                    ></input>
+                  </td>
+                </tr>
+              </table>
+              <div className="flex justify-center p-4">
+                <button
+                  className="px-5 py-3 border-double border-white border-2 bg-black rounded text-20px text-orange-400  hover:bg-orange-200"
+                  onClick={() => _onSubmit}
+                >
+                  Issue Token
+                </button>
+              </div>
+            </form>
           </div>
           <div className="flex justify-center text-green-400 p-5 m-5 text-25px">
-          Token Address is : {tokenAddress}
-        </div>
-        <div className="flex justify-center p-5"></div>
-        <div className="p-5"></div>
-        <form className="" onSubmit={registerToDao}>
-          <div className="flex justify-center">
-            <div className=" p-2 ">
-              <div className="text-orange-300 text-center text-30px">
-                Create A Proposal Which Register The Token
+            Token Address is : {tokenAddress}
+          </div>
+          <div className="flex justify-center p-5"></div>
+          <div className="p-5"></div>
+          <form className="" onSubmit={() => registerToDao}>
+            <div className="flex justify-center">
+              <div className=" p-2 ">
+                <div className="text-orange-300 text-center text-30px">
+                  Create A Proposal Which Register The Token
+                </div>
               </div>
             </div>
             <div className="m-5 flex justify-center text-24px text-blue-200">
@@ -225,14 +244,15 @@ const IssueErc721 = (props: IssueErc721Parameter) => {
                 </tr>
               </table>
             </div>
-          </div>
-        <button
-              className="px-5 py-3 border-double border-white border-2 bg-black rounded text-20px text-orange-400  hover:bg-orange-200"
-              onClick={registerToDao}
-            >
-              Create A Proposal
-            </button>
-        </form>
+            <div className="flex justify-center">
+              <button
+                className="px-5 py-3 border-double border-white border-2 bg-black rounded text-20px text-orange-400  hover:bg-orange-200"
+                onClick={() => registerToDao}
+              >
+                Create A Proposal
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </>

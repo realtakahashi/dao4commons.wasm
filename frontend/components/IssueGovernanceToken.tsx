@@ -75,7 +75,8 @@ const IssueGovernance = (props: IssueGovernanceParameter) => {
     });
   };
 
-  const registerToDao = async () => {
+  const registerToDao = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     await createProposal4AddingTokenToList(
       Number(TokenKind.GOVERNANCE),
       tokenAddress,
@@ -158,87 +159,86 @@ const IssueGovernance = (props: IssueGovernanceParameter) => {
           </form>
         </div>
         <div className="p-5"></div>
-        <div className="flex justify-center text-green-400 p-5 m-5 text-25px">
+        <div className="flex justify-center text-green-400 text-25px">
           Token Address is : {tokenAddress}
         </div>
         <div className="p-5"></div>
         <form className="" onSubmit={registerToDao}>
           <div className="flex justify-center">
-            <div className=" p-2 ">
-              <div className="text-orange-300 text-center text-30px">
-                Create A Proposal Which Register The Token
-              </div>
+            <div className="text-orange-300 text-center text-30px">
+              Create A Proposal Which Register The Token
             </div>
-            <div className="m-5 flex justify-center text-24px text-blue-200">
-              <label>Proposal Information</label>
-            </div>
-            <div className="p-2 m-5 flex flex-col">
-              <table>
-                <tr>
-                  <th className=" flex justify-end px-4 py-2 text-white">
-                    Title:
-                  </th>
-                  <td className=" px-4 py-2">
-                    <input
-                      className="appearance-none rounded w-2/3 py-2 px-4 text-gray-700 
+          </div>
+          <div className="p-3"></div>
+          <div className="flex justify-center text-24px text-blue-200">
+            <label>Proposal Information</label>
+          </div>
+          <div className="p-2 m-5 flex flex-col">
+            <table>
+              <tr>
+                <th className=" flex justify-end px-4 py-2 text-white">
+                  Title:
+                </th>
+                <td className=" px-4 py-2">
+                  <input
+                    className="appearance-none rounded w-2/3 py-2 px-4 text-gray-700 
                         leading-tight focus:outline-none focus:bg-white focus:border-blue-500"
-                      name="title"
-                      type="text"
-                      onChange={onChangeInputProposal}
-                    ></input>
-                  </td>
-                </tr>
-                <tr>
-                  <th className="flex justify-end px-4 py-2 text-white">
-                    Outline:
-                  </th>
-                  <td className=" px-4 py-2">
-                    <textarea
-                      className="appearance-none border-2 border-gray-200 rounded w-2/3 py-2 px-4 text-gray-700 
+                    name="title"
+                    type="text"
+                    onChange={onChangeInputProposal}
+                  ></input>
+                </td>
+              </tr>
+              <tr>
+                <th className="flex justify-end px-4 py-2 text-white">
+                  Outline:
+                </th>
+                <td className=" px-4 py-2">
+                  <textarea
+                    className="appearance-none border-2 border-gray-200 rounded w-2/3 py-2 px-4 text-gray-700 
                         leading-tight focus:outline-none focus:bg-white focus:border-blue-500"
-                      name="outline"
-                      rows={5}
-                      onInput={onChangeTextProposal}
-                    ></textarea>
-                  </td>
-                </tr>
-                <tr>
-                  <th className="flex justify-end px-4 py-2 text-white">
-                    Detail:
-                  </th>
-                  <td className=" px-4 py-2">
-                    <textarea
-                      className="appearance-none border-2 border-gray-200 rounded w-2/3 py-2 px-4 text-gray-700 
+                    name="outline"
+                    rows={5}
+                    onInput={onChangeTextProposal}
+                  ></textarea>
+                </td>
+              </tr>
+              <tr>
+                <th className="flex justify-end px-4 py-2 text-white">
+                  Detail:
+                </th>
+                <td className=" px-4 py-2">
+                  <textarea
+                    className="appearance-none border-2 border-gray-200 rounded w-2/3 py-2 px-4 text-gray-700 
                         leading-tight focus:outline-none focus:bg-white focus:border-blue-500"
-                      name="detail"
-                      rows={10}
-                      onInput={onChangeTextProposal}
-                    ></textarea>
-                  </td>
-                </tr>
-                <tr>
-                  <th className="flex justify-end px-4 py-2 text-white">
-                    Github URL:
-                  </th>
-                  <td className=" px-4 py-2">
-                    <input
-                      className="appearance-none border-2 border-gray-200 rounded w-2/3 py-2 px-4 text-gray-700 
+                    name="detail"
+                    rows={10}
+                    onInput={onChangeTextProposal}
+                  ></textarea>
+                </td>
+              </tr>
+              <tr>
+                <th className="flex justify-end px-4 py-2 text-white">
+                  Github URL:
+                </th>
+                <td className=" px-4 py-2">
+                  <input
+                    className="appearance-none border-2 border-gray-200 rounded w-2/3 py-2 px-4 text-gray-700 
                         leading-tight focus:outline-none focus:bg-white focus:border-blue-500"
-                      name="githubURL"
-                      type="text"
-                      onChange={onChangeInputProposal}
-                    ></input>
-                  </td>
-                </tr>
-              </table>
-            </div>
+                    name="githubURL"
+                    type="text"
+                    onChange={onChangeInputProposal}
+                  ></input>
+                </td>
+              </tr>
+            </table>
           </div>
           <div className="flex justify-center p-5">
             <button
               className="px-4 py-2 border-double border-white border-2 bg-black rounded text-20px text-orange-400  hover:bg-orange-200"
-              onClick={registerToDao}
+              onClick={() => registerToDao}
             >
-              Register To Dao
+              Create A Proposal
             </button>
           </div>
         </form>

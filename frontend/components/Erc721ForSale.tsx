@@ -10,6 +10,10 @@ import {
   get_account_info,
   get_selected_address,
 } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
+import { ApiPromise, WsProvider } from "@polkadot/api";
+import { formatBalances } from "@/dao4.frontend.common.wasm/contracts/contract_common_util";
+
+const blockchainUrl = String(process.env.NEXT_PUBLIC_BLOCKCHAIN_URL) ?? "";
 
 interface Erc721ForSaleParameter {
   selectToken: TokenInfoWithName;
@@ -30,7 +34,10 @@ const Erc721ForSale = (props: Erc721ForSaleParameter) => {
   };
 
   const _onSubmitBuy = async (event: React.FormEvent<HTMLFormElement>) => {
+    console.log("### psp34 submit buy.");
     event.preventDefault();
+    const wsProvider = new WsProvider(blockchainUrl);
+    const api = await ApiPromise.create({ provider: wsProvider });  
     await buy(selectedAccount, props.selectToken.tokenAddress, setTokenId);
   };
 
@@ -47,11 +54,15 @@ const Erc721ForSale = (props: Erc721ForSaleParameter) => {
   };
 
   const _getPrice = async () => {
-    const ret = await getPrice(
+    let ret = await getPrice(
       selectedAccount.address,
       props.selectToken.tokenAddress
     );
-    setPrice(String(ret));
+    const wsProvider = new WsProvider(blockchainUrl);
+    const api = await ApiPromise.create({ provider: wsProvider });  
+    const decimals = api.registry.chainDecimals;
+    ret = formatBalances(ret,decimals[0]);
+    setPrice(ret);
   };
 
   useEffect(() => {

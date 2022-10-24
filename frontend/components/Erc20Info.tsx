@@ -14,6 +14,7 @@ import {
   get_account_info,
   get_selected_address,
 } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
+import { formatBalances } from "@/dao4.frontend.common.wasm/contracts/contract_common_util";
 
 interface Erc20InfoParameter {
   selectToken: TokenInfoWithName;
@@ -38,7 +39,7 @@ const Erc20Info = (props: Erc20InfoParameter) => {
 
   const _getSalesAmount = async () => {
     const ret = await getSalesAmount(selectedAddress, props.selectToken.tokenAddress);
-    setSalesAmount(ethers.utils.formatEther(ret));
+    setSalesAmount(ret);
   };
 
   const _getMintedAmount = async () => {
@@ -46,7 +47,8 @@ const Erc20Info = (props: Erc20InfoParameter) => {
   };
 
   const _getPrice = async () => {
-    const ret = await getPrice(selectedAddress ,props.selectToken.tokenAddress);
+    let ret = await getPrice(selectedAddress ,props.selectToken.tokenAddress);
+    ret = formatBalances(ret,Number(props.selectToken.decimal));
     setPrice(ret);
   };
 
@@ -64,9 +66,9 @@ const Erc20Info = (props: Erc20InfoParameter) => {
 
   return (
     <>
-      <div className="bg-black  min-h-screen">
+      {/* <div className="bg-black  min-h-screen"> */}
         <div className="flex justify-center leading-none tracking-tight">
-          <div className="text-orange-300 text-30px">Token Status</div>
+          <div className="text-blue-300 text-30px">Token Status</div>
         </div>
         <div className="p-2"></div>
         <div className="flex justify-center">
@@ -93,9 +95,13 @@ const Erc20Info = (props: Erc20InfoParameter) => {
               <th className="flex justify-start">Sales Amount :</th>
               <td>{salesAmount}</td>
             </tr>
+            <tr>
+              <th className="flex justify-start">Decimal :</th>
+              <td>{props.selectToken.decimal}</td>
+            </tr>
           </table>
         </div>
-      </div>
+      {/* </div> */}
     </>
   );
 };

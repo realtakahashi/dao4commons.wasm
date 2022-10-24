@@ -45,13 +45,13 @@ const Tokens = () => {
             className="m-5 px-7 py-3 border-double border-white border-2 bg-black rounded text-white  hover:border-orange-500"
             onClick={() => _setShow(false,!showIssueErc20,false,false)}
           >
-            Issue Erc20
+            Issue PSP22
           </button>
           <button
             className="m-5 px-7 py-3 border-double border-white border-2 bg-black rounded text-white  hover:border-orange-500"
             onClick={() => _setShow(false, false, !showIssueErc721,false)}
           >
-            Issue Erc721
+            Issue PSP34
           </button>
           <button
             className="m-5 px-7 py-3 border-double border-white border-2 bg-black rounded text-white  hover:border-orange-500"

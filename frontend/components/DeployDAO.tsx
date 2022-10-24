@@ -1,7 +1,6 @@
 import { deploySubDAO } from "../dao4.frontend.common.wasm/contracts/subdao_api";
 import { SubDAODeployFormData } from "../dao4.frontend.common.wasm/types/SubDaoType";
 import { useState } from "react";
-import { useAccountContext } from "@/hooks/account_context";
 import { get_account_info, get_selected_address } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
 
 interface DeployDaoParameter {

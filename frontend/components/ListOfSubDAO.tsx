@@ -11,7 +11,7 @@ import {
 import { useEffect } from "react";
 import Link from "next/link";
 import Donate from "@/dao4.frontend.common.wasm/components/Donate";
-import { TargetDaoKind } from "@/dao4.frontend.common.wasm/types/MasterDaoType";
+import { TargetDaoKind } from "@/dao4.frontend.common.wasm/types/SubDaoType";
 import TokenList from "./TokenList";
 
 import { get_selected_address, get_account_info } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
@@ -153,7 +153,7 @@ const ListOfSubDAO = () => {
         </div>
       )}
       ;
-      {/* {showDonate == true && (
+      {showDonate == true && (
         <Donate
           daoAddress={selectDao.daoAddress}
           daoName={selectDao.daoName}
@@ -167,7 +167,7 @@ const ListOfSubDAO = () => {
           setShowList={setShowList}
           forMember={false}
         ></TokenList>
-      )} */}
+      )}
     </>
   );
 };
