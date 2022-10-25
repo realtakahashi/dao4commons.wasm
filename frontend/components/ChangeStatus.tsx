@@ -155,7 +155,7 @@ const ChangeStatus = (props: TokenChangeStatusParameter) => {
               className="px-4 py-2 border-double border-white border-2 bg-black rounded text-20px text-orange-400  hover:bg-orange-200"
               onClick={() => _onSubmitStatus}
             >
-              Change Status
+              Create A Proposal
             </button>
           </div>
         </form>
