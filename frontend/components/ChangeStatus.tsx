@@ -3,11 +3,12 @@ import {
   ProposalData4ChangingTokenSaleStatus,
   TokenInfoWithName,
 } from "@/dao4.frontend.common.wasm/types/Token";
-import { useState } from "react";
+import { useState, useContext } from "react";
 import {
   get_account_info,
   get_selected_address,
 } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
+import { AppContext } from "../pages/_app";
 
 interface TokenChangeStatusParameter {
   selectToken: TokenInfoWithName;
@@ -24,6 +25,7 @@ const ChangeStatus = (props: TokenChangeStatusParameter) => {
       detail: "",
       githubURL: "",
     });
+    const {api} = useContext(AppContext);
 
   const onChangeSelect = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setChangeStatusValue({
@@ -51,6 +53,7 @@ const ChangeStatus = (props: TokenChangeStatusParameter) => {
     const selectedAccount = await get_account_info(get_selected_address());
     console.log("### changeStatusValue:", changeStatusValue);
     await proposeChangingTokenSaleStatus(
+      api,
       selectedAccount,
       changeStatusValue,
       props.selectToken.tokenAddress,

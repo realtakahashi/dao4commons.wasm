@@ -3,11 +3,12 @@ import {
   ProposalData4ChangingTokenSaleStatus,
   TokenInfoWithName,
 } from "@/dao4.frontend.common.wasm/types/Token";
-import { useState } from "react";
+import { useState, useContext } from "react";
 import {
   get_account_info,
   get_selected_address,
 } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
+import { AppContext } from "../pages/_app";
 
 interface TokenWithDrawParameter {
   selectToken: TokenInfoWithName;
@@ -24,6 +25,7 @@ const TokenWithdraw = (props: TokenWithDrawParameter) => {
       detail: "",
       githubURL: "",
     });
+    const {api} = useContext(AppContext);
 
   const onChangeInput = (event: React.ChangeEvent<HTMLInputElement>) => {
     setProposalValue({
@@ -43,6 +45,7 @@ const TokenWithdraw = (props: TokenWithDrawParameter) => {
     event.preventDefault();
     const selectedAccount = await get_account_info(get_selected_address());
     await CreateProoposalOfWithdraw(
+      api,
       selectedAccount,
       proposalValue,
       props.selectToken.tokenAddress,

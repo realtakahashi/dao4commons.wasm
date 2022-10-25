@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import DaoBalance from "dao4.frontend.common.wasm/components/DaoBalance";
 import { useRouter } from "next/router";
 import { getDaoName } from "dao4.frontend.common.wasm/contracts/subdao_api";
@@ -9,6 +9,7 @@ import Donate from "@/dao4.frontend.common.wasm/components/Donate";
 import { TargetDaoKind } from "@/dao4.frontend.common.wasm/types/SubDaoType";
 import Divide from "@/dao4.frontend.common.wasm/components/Divide";
 import { get_account_info, get_selected_address } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
+import {AppContext} from "../../_app";
 
 const DaoTop = () => {
   const router = useRouter();
@@ -18,6 +19,7 @@ const DaoTop = () => {
   const [showProposal,setShowProposal] = useState(false);
   const [showDonate,setShowDonate] = useState(false);
   const [showDivide,setShowDivide] = useState(false);
+  const {api} = useContext(AppContext);
 
   useEffect(()=>{
     _getDaoName();
@@ -25,7 +27,7 @@ const DaoTop = () => {
 
   const _getDaoName = async () => {
     const selectedAccount = await get_account_info(get_selected_address());
-    setDaoName(await getDaoName(selectedAccount.address,subDAOaddress));
+    setDaoName(await getDaoName(api,selectedAccount.address,subDAOaddress));
   }
 
   const _setShow = (showMember:boolean,showProposal:boolean,showDonate:boolean,showDivide:boolean) =>{

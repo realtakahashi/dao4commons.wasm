@@ -5,12 +5,13 @@ import {
   ProposalData4RegisterToken,
   TokenKind,
 } from "@/dao4.frontend.common.wasm/types/Token";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import type { InjectedAccountWithMeta } from "@polkadot/extension-inject/types";
 import {
   get_account_info,
   get_selected_address,
 } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
+import { AppContext } from "../pages/_app";
 
 interface IssueErc721Parameter {
   daoAddress: string;
@@ -30,6 +31,7 @@ const IssueErc721 = (props: IssueErc721Parameter) => {
     price: 0,
     baseUri: "",
   });
+  const {api} = useContext(AppContext);
 
   const [proposalValue, setProposalValue] =
     useState<ProposalData4RegisterToken>({
@@ -72,12 +74,13 @@ const IssueErc721 = (props: IssueErc721Parameter) => {
   const _onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     deployData.daoAddress = props.daoAddress;
-    await deployDaoErc721(selectedAccount, deployData, setTokenAddress);
+    await deployDaoErc721(api, selectedAccount, deployData, setTokenAddress);
   };
 
   const registerToDao = async (event: React.ChangeEvent<HTMLInputElement>) => {
     event.preventDefault();
     await createProposal4AddingTokenToList(
+      api,
       Number(TokenKind.ERC721),
       tokenAddress,
       selectedAccount,

@@ -1,7 +1,8 @@
 import { addFirstMember } from "../dao4.frontend.common.wasm/contracts/membermanager_api";
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { FirstMemberData } from "../dao4.frontend.common.wasm/types/MemberManagerType";
 import { get_account_info, get_selected_address } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
+import { AppContext } from "../pages/_app";
 
 interface FirstMemberParameter {
   setCheckAddFirstMember: (flg: boolean) => void;
@@ -13,8 +14,7 @@ const AddFirstMmeber = (props: FirstMemberParameter) => {
     ownerName: "",
     tokenId: 0,
   });
-
-  // const selectedAccount = useAccountContext();
+  const {api} = useContext(AppContext);
 
   const onChangeInput = (event: React.ChangeEvent<HTMLInputElement>) => {
     setMemberValue({
@@ -27,6 +27,7 @@ const AddFirstMmeber = (props: FirstMemberParameter) => {
     event.preventDefault();
     const selectedAccount = await get_account_info(get_selected_address());
     const result = await addFirstMember(
+      api,
       selectedAccount,
       memberValue,
       props.subDaoAddress,

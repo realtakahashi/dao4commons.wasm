@@ -5,12 +5,13 @@ import {
   ProposalData4RegisterToken,
   TokenKind,
 } from "@/dao4.frontend.common.wasm/types/Token";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import type { InjectedAccountWithMeta } from "@polkadot/extension-inject/types";
 import {
   get_account_info,
   get_selected_address,
 } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
+import { AppContext } from "../pages/_app";
 
 interface IssueErc20Parameter {
   daoAddress: string;
@@ -39,6 +40,7 @@ const IssueErc20 = (props: IssueErc20Parameter) => {
       detail: "",
       githubURL: "",
     });
+  const { api } = useContext(AppContext);
 
   const getSelectedAccount = async () => {
     setSelectedAccount(await get_account_info(get_selected_address()));
@@ -54,7 +56,7 @@ const IssueErc20 = (props: IssueErc20Parameter) => {
   const _onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     deployData.daoAddress = props.daoAddress;
-    await deployDaoErc20(selectedAccount, deployData, setTokenAddress);
+    await deployDaoErc20(api, selectedAccount, deployData, setTokenAddress);
   };
 
   const onChangeInputProposal = (
@@ -77,8 +79,9 @@ const IssueErc20 = (props: IssueErc20Parameter) => {
 
   const registerToDao = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    console.log("## register TokenKind:",Number(TokenKind.ERC20))
+    console.log("## register TokenKind:", Number(TokenKind.ERC20));
     await createProposal4AddingTokenToList(
+      api,
       Number(TokenKind.ERC20),
       tokenAddress,
       selectedAccount,
@@ -182,71 +185,71 @@ const IssueErc20 = (props: IssueErc20Parameter) => {
                 Create A Proposal Which Register The Token
               </div>
             </div>
-            </div>
-            <div className="m-5 flex justify-center text-24px text-blue-200">
-              <label>Proposal Information</label>
-            </div>
-            {/* <div className="flex justify-center"> */}
-            <div className="p-2 m-5 flex flex-col">
-              <table>
-                <tr>
-                  <th className=" flex justify-end px-4 py-2 text-white">
-                    Title:
-                  </th>
-                  <td className=" px-4 py-2">
-                    <input
-                      className="appearance-none rounded w-2/3 py-2 px-4 text-gray-700 
+          </div>
+          <div className="m-5 flex justify-center text-24px text-blue-200">
+            <label>Proposal Information</label>
+          </div>
+          {/* <div className="flex justify-center"> */}
+          <div className="p-2 m-5 flex flex-col">
+            <table>
+              <tr>
+                <th className=" flex justify-end px-4 py-2 text-white">
+                  Title:
+                </th>
+                <td className=" px-4 py-2">
+                  <input
+                    className="appearance-none rounded w-2/3 py-2 px-4 text-gray-700 
                         leading-tight focus:outline-none focus:bg-white focus:border-blue-500"
-                      name="title"
-                      type="text"
-                      onChange={onChangeInputProposal}
-                    ></input>
-                  </td>
-                </tr>
-                <tr>
-                  <th className="flex justify-end px-4 py-2 text-white">
-                    Outline:
-                  </th>
-                  <td className=" px-4 py-2">
-                    <textarea
-                      className="appearance-none border-2 border-gray-200 rounded w-2/3 py-2 px-4 text-gray-700 
+                    name="title"
+                    type="text"
+                    onChange={onChangeInputProposal}
+                  ></input>
+                </td>
+              </tr>
+              <tr>
+                <th className="flex justify-end px-4 py-2 text-white">
+                  Outline:
+                </th>
+                <td className=" px-4 py-2">
+                  <textarea
+                    className="appearance-none border-2 border-gray-200 rounded w-2/3 py-2 px-4 text-gray-700 
                         leading-tight focus:outline-none focus:bg-white focus:border-blue-500"
-                      name="outline"
-                      rows={5}
-                      onInput={onChangeTextProposal}
-                    ></textarea>
-                  </td>
-                </tr>
-                <tr>
-                  <th className="flex justify-end px-4 py-2 text-white">
-                    Detail:
-                  </th>
-                  <td className=" px-4 py-2">
-                    <textarea
-                      className="appearance-none border-2 border-gray-200 rounded w-2/3 py-2 px-4 text-gray-700 
+                    name="outline"
+                    rows={5}
+                    onInput={onChangeTextProposal}
+                  ></textarea>
+                </td>
+              </tr>
+              <tr>
+                <th className="flex justify-end px-4 py-2 text-white">
+                  Detail:
+                </th>
+                <td className=" px-4 py-2">
+                  <textarea
+                    className="appearance-none border-2 border-gray-200 rounded w-2/3 py-2 px-4 text-gray-700 
                         leading-tight focus:outline-none focus:bg-white focus:border-blue-500"
-                      name="detail"
-                      rows={10}
-                      onInput={onChangeTextProposal}
-                    ></textarea>
-                  </td>
-                </tr>
-                <tr>
-                  <th className="flex justify-end px-4 py-2 text-white">
-                    Github URL:
-                  </th>
-                  <td className=" px-4 py-2">
-                    <input
-                      className="appearance-none border-2 border-gray-200 rounded w-2/3 py-2 px-4 text-gray-700 
+                    name="detail"
+                    rows={10}
+                    onInput={onChangeTextProposal}
+                  ></textarea>
+                </td>
+              </tr>
+              <tr>
+                <th className="flex justify-end px-4 py-2 text-white">
+                  Github URL:
+                </th>
+                <td className=" px-4 py-2">
+                  <input
+                    className="appearance-none border-2 border-gray-200 rounded w-2/3 py-2 px-4 text-gray-700 
                         leading-tight focus:outline-none focus:bg-white focus:border-blue-500"
-                      name="githubURL"
-                      type="text"
-                      onChange={onChangeInputProposal}
-                    ></input>
-                  </td>
-                </tr>
-              </table>
-            </div>
+                    name="githubURL"
+                    type="text"
+                    onChange={onChangeInputProposal}
+                  ></input>
+                </td>
+              </tr>
+            </table>
+          </div>
           {/* </div> */}
           <div className="flex justify-center p-5">
             <button

@@ -1,13 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import Link from "next/link";
 import ListOfSubDAO from "../components/ListOfSubDAO";
 import SelectAccount from "@/components/SelectAccount";
 
-import type { InjectedAccountWithMeta } from "@polkadot/extension-inject/types";
-
 const Home = () => {
   const [showSelectAccount, setShowSelectAccount] = useState(false);
-  const [account, setAccount] = useState<InjectedAccountWithMeta>({address:"",meta:{genesisHash:"",name:"",source:""}});
 
   const checkSelectedAccount = () => {
     let address = sessionStorage.getItem("selected_account_address");

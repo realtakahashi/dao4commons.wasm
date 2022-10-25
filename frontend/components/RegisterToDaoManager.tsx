@@ -1,6 +1,8 @@
 import { registerToDaoManager } from "@/dao4.frontend.common.wasm/contracts/subdao_api";
 import { SubDAODeployFormData } from "../dao4.frontend.common.wasm/types/SubDaoType";
 import { get_account_info, get_selected_address } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
+import { useContext } from "react";
+import { AppContext } from "../pages/_app";
 
 interface FinishRegisterSetting {
   setCheckRegisterDAO: (flg: boolean) => void;
@@ -9,10 +11,12 @@ interface FinishRegisterSetting {
 }
 
 const RegisterToDaoManager = (props: FinishRegisterSetting) => {
+  const {api} = useContext(AppContext);
 
   const _registerToDaoManager = async () => {
     const selectedAccount = await get_account_info(get_selected_address());
     await registerToDaoManager(
+      api,
       selectedAccount,
       props.subDaoAddress,
       props.setCheckRegisterDAO);

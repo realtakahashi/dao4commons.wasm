@@ -4,7 +4,7 @@ import {
   getSalesStatus,
 } from "@/dao4.frontend.common.wasm/contracts/DaoErc721_api";
 import { TokenInfoWithName } from "@/dao4.frontend.common.wasm/types/Token";
-import { useEffect, useState } from "react";
+import { useEffect, useState,useContext } from "react";
 import type { InjectedAccountWithMeta } from "@polkadot/extension-inject/types";
 import {
   get_account_info,
@@ -12,6 +12,7 @@ import {
 } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
 import { ApiPromise, WsProvider } from "@polkadot/api";
 import { formatBalances } from "@/dao4.frontend.common.wasm/contracts/contract_common_util";
+import { AppContext } from "../pages/_app";
 
 const blockchainUrl = String(process.env.NEXT_PUBLIC_BLOCKCHAIN_URL) ?? "";
 
@@ -28,6 +29,7 @@ const Erc721ForSale = (props: Erc721ForSaleParameter) => {
       address: "",
       meta: { genesisHash: "", name: "", source: "" },
     });
+    const {api} = useContext(AppContext);
 
   const getAccountInfo = async () => {
     setSelectedAccount(await get_account_info(get_selected_address()));
@@ -38,11 +40,12 @@ const Erc721ForSale = (props: Erc721ForSaleParameter) => {
     event.preventDefault();
     const wsProvider = new WsProvider(blockchainUrl);
     const api = await ApiPromise.create({ provider: wsProvider });  
-    await buy(selectedAccount, props.selectToken.tokenAddress, setTokenId);
+    await buy(api, selectedAccount, props.selectToken.tokenAddress, setTokenId);
   };
 
   const _getSalesStatus = async () => {
     const ret = await getSalesStatus(
+      api,
       selectedAccount.address,
       props.selectToken.tokenAddress
     );
@@ -55,11 +58,10 @@ const Erc721ForSale = (props: Erc721ForSaleParameter) => {
 
   const _getPrice = async () => {
     let ret = await getPrice(
+      api,
       selectedAccount.address,
       props.selectToken.tokenAddress
     );
-    const wsProvider = new WsProvider(blockchainUrl);
-    const api = await ApiPromise.create({ provider: wsProvider });  
     const decimals = api.registry.chainDecimals;
     ret = formatBalances(ret,decimals[0]);
     setPrice(ret);

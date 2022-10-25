@@ -6,7 +6,7 @@ import {
   getSalesStatus,
 } from "@/dao4.frontend.common.wasm/contracts/DaoErc20_api";
 import { TokenInfoWithName } from "@/dao4.frontend.common.wasm/types/Token";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import {
   get_account_info,
   get_selected_address,
@@ -14,6 +14,7 @@ import {
 import type { InjectedAccountWithMeta } from "@polkadot/extension-inject/types";
 import { formatBalances } from "@/dao4.frontend.common.wasm/contracts/contract_common_util";
 import { BN } from "@polkadot/util";
+import { AppContext } from "../pages/_app";
 
 interface Erc20ForSaleParameter {
   selectToken: TokenInfoWithName;
@@ -30,6 +31,7 @@ const Erc20ForSale = (props: Erc20ForSaleParameter) => {
       address: "",
       meta: { genesisHash: "", name: "", source: "" },
     });
+    const {api} = useContext(AppContext);
 
   const getAccountInfo = async () => {
     setSelectedAccount(await get_account_info(get_selected_address()));
@@ -41,11 +43,12 @@ const Erc20ForSale = (props: Erc20ForSaleParameter) => {
     // const decimal10 = new BN("10").pow(new BN(props.selectToken.decimal));
     // const amount = new BN(buyAmount).mul(decimal10);
     // console.log("## decimal10:", decimal10.toString());
-    await buy(selectedAccount, props.selectToken.tokenAddress, new BN(buyAmount));
+    await buy(api,selectedAccount, props.selectToken.tokenAddress, new BN(buyAmount));
   };
 
   const _getSalesStatus = async () => {
     const ret = await getSalesStatus(
+      api,
       selectedAccount.address,
       props.selectToken.tokenAddress
     );
@@ -58,6 +61,7 @@ const Erc20ForSale = (props: Erc20ForSaleParameter) => {
 
   const _getSalesAmount = async () => {
     const ret = await getSalesAmount(
+      api,
       selectedAccount.address,
       props.selectToken.tokenAddress
     );
@@ -67,6 +71,7 @@ const Erc20ForSale = (props: Erc20ForSaleParameter) => {
   const _getMintedAmount = async () => {
     setMintedAmount(
       await getMintedAmount(
+        api,
         selectedAccount.address,
         props.selectToken.tokenAddress
       )
@@ -75,6 +80,7 @@ const Erc20ForSale = (props: Erc20ForSaleParameter) => {
 
   const _getPrice = async () => {
     let ret = await getPrice(
+      api,
       selectedAccount.address,
       props.selectToken.tokenAddress
     );

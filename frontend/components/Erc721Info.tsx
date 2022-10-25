@@ -4,10 +4,11 @@ import {
   getSalesStatus,
 } from "@/dao4.frontend.common.wasm/contracts/DaoErc721_api";
 import { TokenInfoWithName } from "@/dao4.frontend.common.wasm/types/Token";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import { get_selected_address } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
 import { formatBalances } from "@/dao4.frontend.common.wasm/contracts/contract_common_util";
 import { ApiPromise, WsProvider } from "@polkadot/api";
+import { AppContext } from "../pages/_app";
 
 const blockchainUrl = String(process.env.NEXT_PUBLIC_BLOCKCHAIN_URL) ?? "";
 
@@ -18,9 +19,9 @@ interface Erc721DetailParameter {
 
 const Erc721Detail = (props: Erc721DetailParameter) => {
   const [saleStatus, setSaleStatus] = useState("");
-  // const [salesAmount, setSalesAmount] = useState("");
   const [price, setPrice] = useState("");
   const [selectedAddress, setSelectedAddress] = useState("");
+  const {api} = useContext(AppContext);
 
   const getSelectedAddress = async () => {
     setSelectedAddress(get_selected_address());
@@ -28,7 +29,7 @@ const Erc721Detail = (props: Erc721DetailParameter) => {
 
   const _getSalesStatus = async () => {
     if (
-      (await getSalesStatus(selectedAddress, props.selectToken.tokenAddress)) ==
+      (await getSalesStatus(api, selectedAddress, props.selectToken.tokenAddress)) ==
       true
     ) {
       setSaleStatus("On Sale");
@@ -37,15 +38,8 @@ const Erc721Detail = (props: Erc721DetailParameter) => {
     }
   };
 
-  // const _getSalesAmount = async () => {
-  //   const ret = await getSalesAmount(selectedAddress,props.selectToken.tokenAddress);
-  //   setSalesAmount(String(ret));
-  // };
-
   const _getPrice = async () => {
-    let ret = await getPrice(selectedAddress, props.selectToken.tokenAddress);
-    const wsProvider = new WsProvider(blockchainUrl);
-    const api = await ApiPromise.create({ provider: wsProvider });  
+    let ret = await getPrice(api, selectedAddress, props.selectToken.tokenAddress);
     const decimals = api.registry.chainDecimals;
     ret = formatBalances(ret,decimals[0]);
     setPrice(ret);

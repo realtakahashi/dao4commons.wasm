@@ -6,12 +6,13 @@ import {
   TokenInfoWithName,
   ProposalData4TransferGovernanceToken,
 } from "@/dao4.frontend.common.wasm/types/Token";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import type { InjectedAccountWithMeta } from "@polkadot/extension-inject/types";
 import {
   get_account_info,
   get_selected_address,
 } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
+import { AppContext } from "../pages/_app";
 
 interface GovernanceTokenDetailParameter {
   selectToken: TokenInfoWithName;
@@ -35,6 +36,7 @@ const GovernanceTokenDetail = (props: GovernanceTokenDetailParameter) => {
       githubURL: "",
       detail: "",
     });
+  const { api } = useContext(AppContext);
 
   const getAccountInfo = async () => {
     setSelectedAccount(await get_account_info(get_selected_address()));
@@ -43,6 +45,7 @@ const GovernanceTokenDetail = (props: GovernanceTokenDetailParameter) => {
   const _getMintedAmount = async () => {
     setMintedAmount(
       await getMintedAmount(
+        api,
         selectedAccount.address,
         props.selectToken.tokenAddress
       )
@@ -66,6 +69,7 @@ const GovernanceTokenDetail = (props: GovernanceTokenDetailParameter) => {
   const createProposal = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     await createProposalDistributeGovToken(
+      api,
       selectedAccount,
       props.daoAddress,
       props.selectToken.tokenAddress,
@@ -106,7 +110,9 @@ const GovernanceTokenDetail = (props: GovernanceTokenDetailParameter) => {
           <div className="text-white flex flex-col p-5">
             <table>
               <tr>
-                <th className="px-2 py-3 flex justify-end ">To Address(csv format)</th>
+                <th className="px-2 py-3 flex justify-end ">
+                  To Address(csv format)
+                </th>
                 <td className="px-2 py-3">
                   <textarea
                     className="appearance-none rounded w-2/3 py-2 px-4 text-gray-700 
@@ -118,7 +124,9 @@ const GovernanceTokenDetail = (props: GovernanceTokenDetailParameter) => {
                 </td>
               </tr>
               <tr>
-                <th className="px-2 py-3 flex justify-end ">Amount(csv format)</th>
+                <th className="px-2 py-3 flex justify-end ">
+                  Amount(csv format)
+                </th>
                 <td className="px-2 py-3">
                   <textarea
                     className="appearance-none rounded w-2/3 py-2 px-4 text-gray-700 

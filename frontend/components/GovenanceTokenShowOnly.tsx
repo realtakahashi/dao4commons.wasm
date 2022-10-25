@@ -1,7 +1,8 @@
 import { getMintedAmount } from "@/dao4.frontend.common.wasm/contracts/GovernanceToken_api";
 import { TokenInfoWithName } from "@/dao4.frontend.common.wasm/types/Token";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import { get_selected_address } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
+import { AppContext } from "../pages/_app";
 
 interface Erc20ForSaleParameter {
   selectToken: TokenInfoWithName;
@@ -9,11 +10,12 @@ interface Erc20ForSaleParameter {
 
 const GovernanceTokenShowOnly = (props: Erc20ForSaleParameter) => {
   const [mintedAmount, setMintedAmount] = useState("");
+  const {api} = useContext(AppContext);
 
   const _getMintedAmount = async () => {
     const selectedAddress = get_selected_address();
     setMintedAmount(
-      await getMintedAmount(selectedAddress, props.selectToken.tokenAddress)
+      await getMintedAmount(api, selectedAddress, props.selectToken.tokenAddress)
     );
   };
 

@@ -5,16 +5,14 @@ import {
   getSalesStatus,
 } from "@/dao4.frontend.common.wasm/contracts/DaoErc20_api";
 import {
-  ProposalData4ChangingTokenSaleStatus,
   TokenInfoWithName,
 } from "@/dao4.frontend.common.wasm/types/Token";
-import { useEffect, useState } from "react";
-import { ethers } from "ethers";
+import { useEffect, useState, useContext } from "react";
 import {
-  get_account_info,
   get_selected_address,
 } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
 import { formatBalances } from "@/dao4.frontend.common.wasm/contracts/contract_common_util";
+import { AppContext } from "../pages/_app";
 
 interface Erc20InfoParameter {
   selectToken: TokenInfoWithName;
@@ -27,9 +25,10 @@ const Erc20Info = (props: Erc20InfoParameter) => {
   const [salesAmount, setSalesAmount] = useState("");
   const [price, setPrice] = useState("");
   const [selectedAddress, setSelectedAddress] = useState("");
+  const {api} = useContext(AppContext);
 
   const _getSalesStatus = async () => {
-    const ret = await getSalesStatus(selectedAddress,props.selectToken.tokenAddress);
+    const ret = await getSalesStatus(api, selectedAddress,props.selectToken.tokenAddress);
     if (ret == true) {
       setSaleStatus("On Sale");
     } else {
@@ -38,16 +37,16 @@ const Erc20Info = (props: Erc20InfoParameter) => {
   };
 
   const _getSalesAmount = async () => {
-    const ret = await getSalesAmount(selectedAddress, props.selectToken.tokenAddress);
+    const ret = await getSalesAmount(api, selectedAddress, props.selectToken.tokenAddress);
     setSalesAmount(ret);
   };
 
   const _getMintedAmount = async () => {
-    setMintedAmount(await getMintedAmount(selectedAddress, props.selectToken.tokenAddress));
+    setMintedAmount(await getMintedAmount(api, selectedAddress, props.selectToken.tokenAddress));
   };
 
   const _getPrice = async () => {
-    let ret = await getPrice(selectedAddress ,props.selectToken.tokenAddress);
+    let ret = await getPrice(api, selectedAddress ,props.selectToken.tokenAddress);
     ret = formatBalances(ret,Number(props.selectToken.decimal));
     setPrice(ret);
   };

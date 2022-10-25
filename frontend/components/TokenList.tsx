@@ -4,12 +4,12 @@ import {
   getTokenListWithName,
 } from "@/dao4.frontend.common.wasm/contracts/subdao_api";
 import {
-  TokenInfo,
   TokenInfoWithName,
   TokenKind,
 } from "@/dao4.frontend.common.wasm/types/Token";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import TokenDetail from "./TokenDetail";
+import { AppContext } from "../pages/_app";
 
 interface TokenListParameter {
   daoAddress: string;
@@ -29,6 +29,7 @@ const TokenList = (props: TokenListParameter) => {
     tokenKind: 0,
     decimal:"",
   });
+  const {api} = useContext(AppContext);
 
   const showSettingAndSelectToken = (
     _showList: boolean,
@@ -43,8 +44,8 @@ const TokenList = (props: TokenListParameter) => {
 
   const _getTokenList = async () => {
     const selecttedAddress = get_selected_address();
-    const list = await getTokenList(selecttedAddress,props.daoAddress);
-    setTokenList(await getTokenListWithName(selecttedAddress,list));
+    const list = await getTokenList(api, selecttedAddress,props.daoAddress);
+    setTokenList(await getTokenListWithName(api, selecttedAddress,list));
   };
 
   const _getTokenKindString = (tokenKind: TokenKind): string => {
