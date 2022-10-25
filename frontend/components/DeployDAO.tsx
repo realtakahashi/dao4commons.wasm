@@ -3,6 +3,7 @@ import { SubDAODeployFormData } from "../dao4.frontend.common.wasm/types/SubDaoT
 import { useState, useContext } from "react";
 import { get_account_info, get_selected_address } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
 import { AppContext } from "../pages/_app";
+import { checkAndCreateApiObject } from "@/dao4.frontend.common.wasm/contracts/contract_common_util";
 
 interface DeployDaoParameter {
   setCheckDeployDao: (flg: boolean) => void;
@@ -17,7 +18,7 @@ const DeployDAO = (props: DeployDaoParameter) => {
     githubUrl: "",
     description: "",
   });
-  const {api} = useContext(AppContext);
+  const {api,setApi} = useContext(AppContext);
 
   const onChangeInput = (event: React.ChangeEvent<HTMLInputElement>) => {
     setDaoValue({
@@ -35,6 +36,7 @@ const DeployDAO = (props: DeployDaoParameter) => {
 
   const _onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    await checkAndCreateApiObject(api, setApi);
     const selectedAccount = await get_account_info(get_selected_address());
     console.log("_onSubmit-selectedAccount: ",selectedAccount);
     await deploySubDAO(

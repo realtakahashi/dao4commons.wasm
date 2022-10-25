@@ -14,8 +14,12 @@ import Donate from "@/dao4.frontend.common.wasm/components/Donate";
 import { TargetDaoKind } from "@/dao4.frontend.common.wasm/types/SubDaoType";
 import TokenList from "./TokenList";
 
-import { get_selected_address, get_account_info } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
+import {
+  get_selected_address,
+  get_account_info,
+} from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
 import { AppContext } from "../pages/_app";
+import { checkAndCreateApiObject } from "@/dao4.frontend.common.wasm/contracts/contract_common_util";
 
 const ListOfSubDAO = () => {
   const [subDaoList, setSubDaoList] =
@@ -31,16 +35,28 @@ const ListOfSubDAO = () => {
     description: "",
     isMember: false,
   });
-  const {api} = useContext(AppContext);
+  const { api, setApi } = useContext(AppContext);
 
   const getSubDaoList = async () => {
     //console.log("## getSubDaoList call 1");
+    await checkAndCreateApiObject(api, setApi);
     const selectedAccount = await get_account_info(get_selected_address());
-    const dao_address_list = await listDAOAddress(api,selectedAccount.address);
-    const list = await listSubDAO(api,selectedAccount.address,dao_address_list);
-    console.log("## address_list:",list);
-    const result = await getDaoListOfAffiliation(api,selectedAccount.address, list);
-    console.log("## daolist:",result);
+    const dao_address_list = await listDAOAddress(
+      api,
+      selectedAccount.address
+    );
+    const list = await listSubDAO(
+      api,
+      selectedAccount.address,
+      dao_address_list
+    );
+    console.log("## address_list:", list);
+    const result = await getDaoListOfAffiliation(
+      api,
+      selectedAccount.address,
+      list
+    );
+    console.log("## daolist:", result);
     setSubDaoList(result);
   };
 

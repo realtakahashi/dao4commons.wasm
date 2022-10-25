@@ -1,7 +1,5 @@
 import { useEffect, useState,useContext } from "react";
 import type { InjectedAccountWithMeta } from "@polkadot/extension-inject/types";
-import { AppContext } from "../pages/_app";
-import { ApiPromise, WsProvider } from "@polkadot/api";
 
 interface SelectAccountParameter {
     setShowAccount:(flg: boolean) => void;
@@ -16,7 +14,6 @@ interface AccountInfo {
 const SelectAccount = (props:SelectAccountParameter) => {
   const [selectedAccount, setSelectedAccount] = useState("");
   const [accounts, setAccounts] = useState<AccountInfo[]>([]);
-  const {api, setApi} = useContext(AppContext);
 
   const extensionSetup = async () => {
     const { web3Accounts, web3Enable } = await import(
@@ -42,15 +39,6 @@ const SelectAccount = (props:SelectAccountParameter) => {
     setAccounts(account_info_array);
   };
 
-  const SetApi = async () => {
-    const blockchainUrl = String(process.env.NEXT_PUBLIC_BLOCKCHAIN_URL) ?? "";
-    const wsProvider = new WsProvider(blockchainUrl);
-    const apiObject = await ApiPromise.create({ provider: wsProvider });
-    setApi(apiObject);
-
-    console.log("### pass SetApi:",api);
-  }
-
   const _onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     if (selectedAccount == "") {
       alert("Please select valid account.");
@@ -59,7 +47,6 @@ const SelectAccount = (props:SelectAccountParameter) => {
     sessionStorage.setItem("selected_account_address",selectedAccount)
     
     props.setShowAccount(false);
-    SetApi();
   };
 
   useEffect(() => {

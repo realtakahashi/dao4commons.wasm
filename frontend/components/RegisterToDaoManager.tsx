@@ -3,6 +3,7 @@ import { SubDAODeployFormData } from "../dao4.frontend.common.wasm/types/SubDaoT
 import { get_account_info, get_selected_address } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
 import { useContext } from "react";
 import { AppContext } from "../pages/_app";
+import { checkAndCreateApiObject } from "@/dao4.frontend.common.wasm/contracts/contract_common_util";
 
 interface FinishRegisterSetting {
   setCheckRegisterDAO: (flg: boolean) => void;
@@ -11,9 +12,10 @@ interface FinishRegisterSetting {
 }
 
 const RegisterToDaoManager = (props: FinishRegisterSetting) => {
-  const {api} = useContext(AppContext);
+  const {api,setApi} = useContext(AppContext);
 
   const _registerToDaoManager = async () => {
+    await checkAndCreateApiObject(api, setApi);
     const selectedAccount = await get_account_info(get_selected_address());
     await registerToDaoManager(
       api,
