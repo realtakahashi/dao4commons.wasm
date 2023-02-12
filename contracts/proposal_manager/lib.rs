@@ -174,6 +174,7 @@ pub mod proposal_manager {
             githubUrl: String,
             csv_data: String,
         ) -> Result<()> {
+            ink_env::debug_println!("################### add_proposal is called #1.");
             let caller = self.env().caller();
             if self
                 .member_manager
@@ -184,14 +185,22 @@ pub mod proposal_manager {
                 return Err(Error::OnlyMemberDoes);
             }
 
+            ink_env::debug_println!("################### add_proposal is called #2.");
+
             let limit = self.is_limit_tenure_count_of_electoral_commissioner(dao_address);
             match proposal_type {
                 ProposalType::ChangeElectoralCommissioner => match limit {
                     true => (),
-                    false => return Err(Error::NotExpirationOfTermOfElectionCommissioner),
+                    false => {
+                        ink_env::debug_println!("################### NotExpirationOfTermOfElectionCommissioner.");
+                        return Err(Error::NotExpirationOfTermOfElectionCommissioner);
+                    }
                 },
                 _ => match limit {
-                    true => return Err(Error::ExpirationOfTermOfElectionCommissioner),
+                    true => {
+                        ink_env::debug_println!("################### ExpirationOfTermOfElectionCommissioner.");
+                        return Err(Error::ExpirationOfTermOfElectionCommissioner);
+                    }
                     false => (),
                 },
             };
@@ -216,6 +225,8 @@ pub mod proposal_manager {
                 .insert(&(dao_address, next_proposal_id), &proposal_info);
             next_proposal_id = next_proposal_id + 1;
             self.next_proposal_ids.insert(&dao_address, &next_proposal_id);
+
+            ink_env::debug_println!("################### add_proposal is called #3.");
             Ok(())
         }
 
@@ -399,7 +410,7 @@ pub mod proposal_manager {
                     match self.member_manager.add_member(_dao_address, proposal_info.clone().csv_data) {
                         Ok(()) => (),
                         Err(e) => {
-                            ink_env::debug_println!("########################### Execute Error.");
+                            ink_env::debug_println!("########################### Execute Error.{:?}",e);
                             return Err(Error::InvalidMemberManagerCall)
                         },
                     }

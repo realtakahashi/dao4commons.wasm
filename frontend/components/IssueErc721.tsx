@@ -73,12 +73,14 @@ const IssueErc721 = (props: IssueErc721Parameter) => {
 
   const _onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    console.log("#### on Submit is called");
     deployData.daoAddress = props.daoAddress;
     await deployDaoErc721(api, selectedAccount, deployData, setTokenAddress);
   };
 
   const registerToDao = async (event: React.ChangeEvent<HTMLInputElement>) => {
     event.preventDefault();
+    console.log("#### registerToDao is called");
     await createProposal4AddingTokenToList(
       api,
       Number(TokenKind.ERC721),
@@ -176,7 +178,7 @@ const IssueErc721 = (props: IssueErc721Parameter) => {
           </div>
           <div className="flex justify-center p-5"></div>
           <div className="p-5"></div>
-          <form className="" onSubmit={() => registerToDao}>
+          <form className="" onSubmit={registerToDao}>
             <div className="flex justify-center">
               <div className=" p-2 ">
                 <div className="text-orange-300 text-center text-30px">

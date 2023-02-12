@@ -1,4 +1,4 @@
-import { get_selected_address } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
+import { get_account_info, get_selected_address } from "@/dao4.frontend.common.wasm/contracts/get_account_info_api";
 import {
   getTokenList,
   getTokenListWithName,
@@ -10,6 +10,7 @@ import {
 import { useEffect, useState, useContext } from "react";
 import TokenDetail from "./TokenDetail";
 import { AppContext } from "../pages/_app";
+import { checkAndCreateApiObject } from "@/dao4.frontend.common.wasm/contracts/contract_common_util";
 
 interface TokenListParameter {
   daoAddress: string;
@@ -29,7 +30,7 @@ const TokenList = (props: TokenListParameter) => {
     tokenKind: 0,
     decimal:"",
   });
-  const {api} = useContext(AppContext);
+  const { api, setApi } = useContext(AppContext);
 
   const showSettingAndSelectToken = (
     _showList: boolean,
@@ -43,9 +44,11 @@ const TokenList = (props: TokenListParameter) => {
   };
 
   const _getTokenList = async () => {
-    const selecttedAddress = get_selected_address();
-    const list = await getTokenList(api, selecttedAddress,props.daoAddress);
-    setTokenList(await getTokenListWithName(api, selecttedAddress,list));
+    await checkAndCreateApiObject(api, setApi);
+    const selectedAccount = await get_account_info(get_selected_address());
+    const list = await getTokenList(api, selectedAccount.address,props.daoAddress);
+    console.log("### tokenlist:", list);
+    setTokenList(await getTokenListWithName(api, selectedAccount.address,list));
   };
 
   const _getTokenKindString = (tokenKind: TokenKind): string => {
